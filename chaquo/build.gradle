@@ -49,3 +49,27 @@ dependencies {
     implementation project(':catvod')
     coreLibraryDesugaring libs.desugar
 }
+
+// Chaquopy 17 registers this generated consumer rules file during configuration,
+// but with AGP 9 it can be missing when the merge task starts. Recreate the
+// plugin's official rules at the last safe point instead of disabling R8.
+tasks.configureEach { task ->
+    if (task.name.startsWith('merge') && task.name.endsWith('ConsumerProguardFiles')) {
+        task.doFirst {
+            def rules = layout.buildDirectory.file('python/proguard-rules.pro').get().asFile
+            if (!rules.exists()) {
+                rules.parentFile.mkdirs()
+                rules.text = '''# Ensure all classes and methods used by Cython code are left alone by minifyEnabled.
+-keep class com.chaquo.python.** { * ; }
+
+# See get_sam in class.pxi.
+-keep class kotlin.jvm.functions.** { * ; }
+-keep class kotlin.jvm.internal.FunctionBase { * ; }
+-keep class kotlin.reflect.KAnnotatedElement { *; }
+
+-dontwarn org.jetbrains.annotations.NotNull
+'''
+            }
+        }
+    }
+}
