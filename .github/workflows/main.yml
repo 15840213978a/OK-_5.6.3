@@ -60,7 +60,20 @@ jobs:
           compile_sdk="$(sed -n 's/^compileSdk = "\([0-9][0-9]*\)"/\1/p' gradle/libs.versions.toml)"
           test -n "$compile_sdk"
           yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager --install "platform-tools" "platforms;android-${compile_sdk}" "build-tools;${compile_sdk}.0.0"
+          sdk_packages="$(sdkmanager --list)"
+          if grep -q "^[[:space:]]*platforms;android-${compile_sdk}[[:space:]]" <<< "$sdk_packages"; then
+            platform_package="platforms;android-${compile_sdk}"
+          else
+            platform_package="$(awk -F'|' '/^[[:space:]]*platforms;android-[A-Za-z]/ {gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1); package=$1} END {print package}' <<< "$sdk_packages")"
+            test -n "$platform_package"
+            echo "Stable android-${compile_sdk} is unavailable; using preview package ${platform_package}."
+          fi
+          sdkmanager --install "platform-tools" "$platform_package" "build-tools;36.0.0"
+          if [[ "$platform_package" != "platforms;android-${compile_sdk}" ]]; then
+            preview_platform="${platform_package#platforms;}"
+            test -f "$ANDROID_SDK_ROOT/platforms/$preview_platform/android.jar"
+            ln -sfn "$ANDROID_SDK_ROOT/platforms/$preview_platform" "$ANDROID_SDK_ROOT/platforms/android-${compile_sdk}"
+          fi
           sdkmanager --list_installed
 
       - name: Set up Gradle cache
