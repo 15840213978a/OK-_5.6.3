@@ -1,79 +1,156 @@
-name: OK影视 ARM64 全版本自动发布
+name: Build and publish Android packages
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: 'Version name (blank = app/build.gradle default)'
+        required: false
+        type: string
+      publish_release:
+        description: 'Publish a GitHub Release'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
-  contents: write
+  contents: read
 
-# 手动触发，不再 push 自动重复构建
-on:
-  workflow_dispatch:
-
+concurrency:
+  group: android-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
-
+    name: Build all APK variants
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
 
     steps:
-
-      # 拉取源码
-      - name: 拉取源码
+      - name: Checkout source
         uses: actions/checkout@v4
 
-
-      # JDK
-      - name: 配置 JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: '21'
 
-
-      # Python（Chaquopy需要）
-      - name: 配置 Python 3.10
+      - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-
-      # Android SDK
-      - name: 配置 Android SDK
+      - name: Set up Android SDK command-line tools
         uses: android-actions/setup-android@v3
 
-
-      # 编译全部 APK
-      - name: 编译全部版本 APK
+      - name: Install the required Android SDK
+        shell: bash
         run: |
+          set -euo pipefail
+          compile_sdk="$(sed -n 's/^compileSdk = "\([0-9][0-9]*\)"/\1/p' gradle/libs.versions.toml)"
+          test -n "$compile_sdk"
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager --install "platform-tools" "platforms;android-${compile_sdk}" "build-tools;${compile_sdk}.0.0"
+          sdkmanager --list_installed
+
+      - name: Set up Gradle cache
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+
+      - name: Resolve version metadata
+        id: version
+        shell: bash
+        env:
+          INPUT_VERSION: ${{ inputs.version_name }}
+        run: |
+          set -euo pipefail
+          source_version="$(sed -n 's/.*orElse("\([0-9][^"]*\)").*/\1/p' app/build.gradle | tail -n1)"
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            version_name="${GITHUB_REF_NAME#v}"
+          elif [[ -n "${INPUT_VERSION:-}" ]]; then
+            version_name="$INPUT_VERSION"
+          else
+            version_name="$source_version"
+          fi
+          [[ "$version_name" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]
+          IFS=. read -r major minor patch <<< "${version_name%%-*}"
+          version_code=$((10#$major * 10000 + 10#$minor * 100 + 10#$patch))
+          echo "name=$version_name" >> "$GITHUB_OUTPUT"
+          echo "code=$version_code" >> "$GITHUB_OUTPUT"
+          echo "tag=v${version_name}" >> "$GITHUB_OUTPUT"
+
+      - name: Configure optional release signing
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$KEYSTORE_BASE64" ]]; then
+            echo 'Release keystore is not configured; APKs will use the Gradle debug key.'
+            exit 0
+          fi
+          test -n "$KEYSTORE_PASSWORD"
+          test -n "$KEY_ALIAS"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
+          {
+            echo "storeFile=$RUNNER_TEMP/release.jks"
+            echo "storePassword=$KEYSTORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=${KEY_PASSWORD:-$KEYSTORE_PASSWORD}"
+          } > local.properties
+
+      - name: Build all release APKs
+        shell: bash
+        run: |
+          set -euo pipefail
           chmod +x gradlew
+          ./gradlew --no-daemon --stacktrace clean :verifyLocalFongMiRepo :app:assembleRelease \
+            -PVERSION_NAME='${{ steps.version.outputs.name }}' \
+            -PVERSION_CODE='${{ steps.version.outputs.code }}'
 
-          ./gradlew clean
-
-          ./gradlew assembleRelease assembleLeanbackArm64_v8aRelease assembleLeanbackArmeabi_v7aRelease
-
-
-      # 查看生成文件
-      - name: 查看 APK
+      - name: Collect and verify packages
+        shell: bash
         run: |
-          find app/build/outputs/apk -name "*.apk"
+          set -euo pipefail
+          mkdir -p dist
+          find app/build/outputs/apk -type f -name '*.apk' -print0 | xargs -0 -r -I{} cp '{}' dist/
+          mapfile -t apks < <(find dist -maxdepth 1 -type f -name '*.apk' | sort)
+          printf 'Found %s APKs:\n' "${#apks[@]}"
+          printf '  %s\n' "${apks[@]}"
+          test "${#apks[@]}" -eq 4
+          for apk in "${apks[@]}"; do
+            apksigner verify --verbose "$apk"
+          done
+          (cd dist && sha256sum ./*.apk > SHA256SUMS.txt)
 
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OK-video-${{ steps.version.outputs.name }}-${{ github.sha }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 30
 
-      # 发布 Release
-      - name: 发布 APK Release
+      - name: Publish GitHub Release
+        if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish_release) }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v5.6.3-build-${{ github.run_number }}
-
-          name: OK影视 5.6.3 自动构建版
-
-          body: |
-            自动编译发布
-
-            包含：
-            - Mobile Release
-            - Leanback ARM64 TV
-            - ARMv7版本
-
-          files: |
-            app/build/outputs/apk/**/*.apk
-
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || steps.version.outputs.tag }}
+          name: OK影视 ${{ steps.version.outputs.name }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: dist/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
