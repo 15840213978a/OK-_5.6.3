@@ -160,12 +160,12 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Publish GitHub Release
-        if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/ok-video-568-rebuild') || startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish_release) }}
+      - name: Publish development build to Releases
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/ok-video-568-rebuild' }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref == 'refs/heads/ok-video-568-rebuild' && format('ok-auto-{0}', github.run_number) || (startsWith(github.ref, 'refs/tags/v') && github.ref_name || steps.version.outputs.tag) }}
-          name: ${{ github.ref == 'refs/heads/ok-video-568-rebuild' && format('OK影视 {0} 自动构建 #{1}', steps.version.outputs.name, github.run_number) || format('OK影视 {0}', steps.version.outputs.name) }}
+          tag_name: ok-auto-${{ github.run_number }}
+          name: OK影视 ${{ steps.version.outputs.name }} 自动构建 #${{ github.run_number }}
           body: |
             OK影视独立仓自动构建
 
@@ -179,6 +179,18 @@ jobs:
             - leanback armeabi-v7a
             - SHA256SUMS.txt
           generate_release_notes: false
+          fail_on_unmatched_files: true
+          files: dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish versioned GitHub Release
+        if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish_release) }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || steps.version.outputs.tag }}
+          name: OK影视 ${{ steps.version.outputs.name }}
+          generate_release_notes: true
           fail_on_unmatched_files: true
           files: dist/*
         env:
