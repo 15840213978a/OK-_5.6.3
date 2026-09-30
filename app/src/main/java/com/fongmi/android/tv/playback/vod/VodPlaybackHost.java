@@ -6,7 +6,6 @@ import com.fongmi.android.tv.bean.Episode;
 import com.fongmi.android.tv.bean.Flag;
 import com.fongmi.android.tv.bean.History;
 import com.fongmi.android.tv.bean.Result;
-import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.bean.Vod;
 
 import java.util.List;
@@ -43,6 +42,10 @@ public interface VodPlaybackHost {
 
     boolean canTrackPlaybackProgress();
 
+    default boolean isIsoNavigationPlayback() {
+        return false;
+    }
+
     boolean canPreloadNext();
 
     long getPlayerPosition();
@@ -51,13 +54,7 @@ public interface VodPlaybackHost {
 
     void usePushId(String id);
 
-    void requestDetail(String key, String id);
-
-    void requestPlayer(VodPlayRequest request);
-
-    void requestPreload(VodPlayRequest request);
-
-    void requestSearch(List<Site> sites, String keyword);
+    void onPlaybackRequested();
 
     void prepareSource(Vod item);
 
@@ -66,6 +63,8 @@ public interface VodPlaybackHost {
     void resetPlaybackForError(String msg);
 
     void replay(long position);
+
+    void seekPlayback(long position);
 
     void startPlayback(Result result, boolean useParse, long startPositionMs, MediaMetadata metadata);
 

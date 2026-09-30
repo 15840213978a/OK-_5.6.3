@@ -17,6 +17,7 @@ import androidx.media3.common.Player;
 import androidx.media3.common.Tracks;
 import androidx.media3.common.VideoSize;
 import androidx.media3.ui.danmaku.DanmakuConfig;
+import androidx.media3.ui.PlayerView;
 
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.Constant;
@@ -31,6 +32,9 @@ import com.fongmi.android.tv.player.effect.audio.AudioEffectBands;
 import com.fongmi.android.tv.player.engine.PlayerEngine;
 import com.fongmi.android.tv.player.engine.PlayerEngineFactory;
 import com.fongmi.android.tv.player.media.PlaySpec;
+import com.fongmi.android.tv.player.mpv.MpvPlayerEngine;
+import com.fongmi.android.tv.player.mpv.MpvScriptSession;
+import com.fongmi.android.tv.player.mpv.MpvScripts;
 import com.fongmi.android.tv.player.parse.ParseJob;
 import com.fongmi.android.tv.player.track.TrackUtil;
 import com.fongmi.android.tv.setting.DanmakuSetting;
@@ -41,6 +45,8 @@ import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.ResUtil;
 import com.fongmi.android.tv.utils.Util;
 import com.google.common.net.HttpHeaders;
+
+import org.json.JSONException;
 
 import java.util.HashMap;
 import java.util.List;
@@ -64,6 +70,7 @@ public class PlayerManager implements ParseCallback {
     private boolean initTrack;
     private int retry;
     private int decode;
+    private float speedBeforePress = Float.NaN;
 
     public PlayerManager(Callback callback) {
         this.callback = callback;
@@ -78,6 +85,7 @@ public class PlayerManager implements ParseCallback {
     }
 
     public void release() {
+        endSpeedPress();
         App.removeCallbacks(runnable);
         if (player != null) player.removeListener(listener);
         if (engine != null) engine.release();
@@ -87,6 +95,47 @@ public class PlayerManager implements ParseCallback {
 
     public Player getPlayer() {
         return player;
+    }
+
+    public boolean isIsoNavigationPlayback() {
+        return engine != null && engine.isIsoNavigationPlayback();
+    }
+
+    public boolean hasDiscMenu() {
+        return engine != null && engine.hasDiscMenu();
+    }
+
+    public boolean isDiscMenuActive() {
+        return engine != null && engine.isDiscMenuActive();
+    }
+
+    public boolean sendDiscMenuAction(String action) {
+        return engine != null && engine.sendDiscMenuAction(action);
+    }
+
+    public boolean sendDiscMenuPointer(float x, float y, boolean activate) {
+        return engine != null && engine.sendDiscMenuPointer(x, y, activate);
+    }
+
+    public void bindPlayerView(@Nullable PlayerView view) {
+        if (engine != null) engine.bindPlayerView(view);
+    }
+
+    // Public Media3 has no MPV script bridge. Keep the settings readable until
+    // the matching optional player implementation is available.
+    public boolean runMpvScript(MpvScripts.Item item) {
+        return false;
+    }
+
+    public MpvScriptSession.Status getMpvScriptStatus(String id) {
+        return null;
+    }
+
+    public List<String> getMpvScriptBindings() throws JSONException {
+        return List.of();
+    }
+
+    public void reloadMpvScripts(boolean reloadStartupScripts, String reloadButtonId) {
     }
 
     private void setPlayer(Player player) {
@@ -291,6 +340,7 @@ public class PlayerManager implements ParseCallback {
     }
 
     public void setSub(Sub sub) {
+        if (sub == null || sub.isEmpty()) return;
         if (spec != null) spec.setSub(sub);
         if (engine.addSubtitle(sub)) play();
         else startCurrent();
@@ -332,6 +382,20 @@ public class PlayerManager implements ParseCallback {
         if (!player.isCommandAvailable(Player.COMMAND_SET_SPEED_AND_PITCH)) return getSpeed();
         player.setPlaybackParameters(player.getPlaybackParameters().withSpeed(SpeedSetting.clamp(speed)));
         return getSpeed();
+    }
+
+    public boolean startSpeedPress(float speed) {
+        if (player == null || !player.isCommandAvailable(Player.COMMAND_SET_SPEED_AND_PITCH)) return false;
+        if (Float.isNaN(speedBeforePress)) speedBeforePress = getSpeed();
+        setSpeed(speed);
+        return true;
+    }
+
+    public void endSpeedPress() {
+        if (Float.isNaN(speedBeforePress)) return;
+        float previous = speedBeforePress;
+        speedBeforePress = Float.NaN;
+        if (player != null) setSpeed(previous);
     }
 
     public float toggleSpeed() {
@@ -572,6 +636,12 @@ public class PlayerManager implements ParseCallback {
     public void toggleDanmaku(Danmaku item) {
         if (spec == null) return;
         spec.toggleDanmaku(item);
+        notifyDanmakuSourceChanged();
+    }
+
+    public void clearDanmaku() {
+        if (spec == null) return;
+        spec.clearDanmaku();
         notifyDanmakuSourceChanged();
     }
 

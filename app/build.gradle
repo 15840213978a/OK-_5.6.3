@@ -1,16 +1,14 @@
+import com.android.build.api.artifact.SingleArtifact
+import com.fongmi.gradle.AbiApkPackaging
+
 plugins {
     alias libs.plugins.android.application
 }
 
 def localProps = new Properties()
-def localPropsFile = rootProject.file('local.properties')
-if (localPropsFile.exists()) {
-    localPropsFile.withInputStream {
-        localProps.load(it)
-    }
+rootProject.file('local.properties').withInputStream {
+    localProps.load(it)
 }
-def hasReleaseSigning = localProps['storeFile'] && localProps['keyAlias'] && localProps['storePassword']
-def releaseKeyPassword = localProps['keyPassword'] ?: localProps['storePassword']
 
 android {
     namespace = 'com.fongmi.android.tv'
@@ -21,8 +19,9 @@ android {
         applicationId "com.kanglian.okvideo"
         minSdk libs.versions.minSdk.get().toInteger()
         targetSdk libs.versions.targetSdk.get().toInteger()
-        versionCode providers.gradleProperty("VERSION_CODE").orElse("568").get().toInteger()
-        versionName providers.gradleProperty("VERSION_NAME").orElse("5.6.8").get()
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        versionCode 568
+        versionName "5.6.8"
         javaCompileOptions {
             annotationProcessorOptions {
                 arguments = ["room.schemaLocation": "$projectDir/schemas".toString(), "eventBusIndex": "com.fongmi.android.tv.event.EventIndex"]
@@ -30,22 +29,14 @@ android {
         }
     }
 
-    flavorDimensions = ["mode", "abi"]
+    flavorDimensions = ["device"]
 
     productFlavors {
         leanback {
-            dimension "mode"
+            dimension "device"
         }
         mobile {
-            dimension "mode"
-        }
-        arm64_v8a {
-            dimension "abi"
-            ndk { abiFilters "arm64-v8a" }
-        }
-        armeabi_v7a {
-            dimension "abi"
-            ndk { abiFilters "armeabi-v7a" }
+            dimension "device"
         }
     }
 
@@ -56,12 +47,10 @@ android {
 
     signingConfigs {
         release {
-            if (hasReleaseSigning) {
-                storeFile file(localProps['storeFile'])
-                keyAlias localProps['keyAlias']
-                keyPassword releaseKeyPassword
-                storePassword localProps['storePassword']
-            }
+            storeFile file(localProps['storeFile'])
+            keyAlias localProps['keyAlias']
+            keyPassword localProps['storePassword']
+            storePassword localProps['storePassword']
         }
     }
 
@@ -69,7 +58,7 @@ android {
         release {
             minifyEnabled = true
             shrinkResources = true
-            signingConfig = hasReleaseSigning ? signingConfigs.release : signingConfigs.debug
+            signingConfig = signingConfigs.release
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro', 'proguard-rules-media.pro'
         }
     }
@@ -80,24 +69,6 @@ android {
         exclude group: 'com.android.support'
         resolutionStrategy {
             force libs.okhttp
-            eachDependency { details ->
-                if (details.requested.group == 'androidx.media3') {
-                    details.useVersion(libs.versions.media3.get())
-                    details.because('Use the WebHTV-pinned FongMi Media3 fork')
-                }
-            }
-        }
-    }
-
-    sourceSets {
-        main {
-            java {
-                // Real bundled MPV is enabled. The three legacy effect wrappers below
-                // target the older private MPV API and stay excluded.
-                exclude 'com/fongmi/android/tv/player/mpv/MpvPlayerEffect.java'
-                exclude 'com/fongmi/android/tv/player/effect/audio/MpvAudioEffectFilter.java'
-                exclude 'com/fongmi/android/tv/player/effect/video/MpvVideoEffectController.java'
-            }
         }
     }
 
@@ -113,28 +84,17 @@ android {
     }
 }
 
-androidComponents {
-    onVariants(selector().withBuildType('release')) { variant ->
-        def flavors = variant.productFlavors.collectEntries { [(it.first): it.second] }
-        def mode = flavors['mode'] ?: 'mode'
-        def abi = flavors['abi'] ?: 'abi'
-        variant.outputs.each { output ->
-            output.outputFileName.set("OK影视-${mode}-${abi}.apk")
-        }
-    }
-}
+AbiApkPackaging.configure(project, SingleArtifact.APK.INSTANCE)
 
 dependencies {
     implementation fileTree(dir: "libs", include: ["*.aar"])
     implementation project(':catvod')
     implementation project(':chaquo')
+    implementation project(':nodejs')
     implementation project(':quickjs')
     implementation libs.appcompat
     implementation libs.lifecycle.service
     implementation libs.media
-    implementation libs.bundles.media3
-    implementation libs.exoplayer.hdr.utils
-    implementation libs.nextlib.media3ext
     implementation libs.palette
     implementation libs.recyclerview
     implementation libs.room.runtime
@@ -147,6 +107,7 @@ dependencies {
     implementation libs.customactivityoncrash
     implementation libs.eventbus
     implementation libs.flexbox
+    implementation libs.rtmp.client
     implementation libs.lottie
     implementation libs.material
     implementation libs.materialdesigncolors
@@ -163,4 +124,7 @@ dependencies {
     annotationProcessor libs.eventbus.annotation.processor
     annotationProcessor libs.glide.compiler
     coreLibraryDesugaring libs.desugar
+    androidTestImplementation 'androidx.test:rules:1.5.0'
+    androidTestImplementation 'androidx.test:runner:1.7.0'
+    androidTestImplementation 'androidx.test.ext:junit:1.3.0'
 }

@@ -13,6 +13,7 @@ import androidx.viewbinding.ViewBinding;
 
 import com.fongmi.android.tv.databinding.DialogSubtitleSettingBinding;
 import com.fongmi.android.tv.player.PlayerManager;
+import com.fongmi.android.tv.ui.activity.PlaybackActivity;
 import com.fongmi.android.tv.utils.ResUtil;
 import com.fongmi.android.tv.utils.Util;
 
@@ -40,6 +41,11 @@ public final class SubtitleSettingDialog {
     }
 
     public void show(FragmentActivity activity) {
+        if (activity instanceof PlaybackActivity playback) {
+            if (player == null) player = playback.getPlaybackPlayer();
+            if (subtitleView == null) subtitleView = playback.getPlaybackSubtitleView();
+        }
+        if (player == null) return;
         FragmentManager manager = activity.getSupportFragmentManager();
         for (Fragment fragment : manager.getFragments()) if (fragment instanceof BottomSheet || fragment instanceof SideSheet) return;
         if (Util.isFullscreenLand(activity) || Util.isLeanback()) new SideSheet(subtitleView, player).show(manager, null);

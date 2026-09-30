@@ -5,7 +5,6 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.OpenableColumns;
-import android.os.StatFs;
 import android.text.TextUtils;
 
 import androidx.core.content.FileProvider;
@@ -17,7 +16,6 @@ import com.github.catvod.utils.Path;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -35,15 +33,6 @@ import java.util.zip.ZipFile;
 
 public class FileUtil {
 
-    // Compatibility helpers used by the newer FongMi player/UI layer.
-    public static File getWall(int index) {
-        return Path.files("wallpaper_" + index);
-    }
-
-    public static File getWallCache() {
-        return Path.files("wallpaper_cache");
-    }
-
     private static final int COPY_BUFFER_SIZE = 64 * 1024;
 
     public static void openFile(File file) {
@@ -54,54 +43,11 @@ public class FileUtil {
         App.get().startActivity(intent);
     }
 
-    private static InputStream openInputStream(Uri uri) throws IOException {
-        InputStream input = App.get().getContentResolver().openInputStream(uri);
-        if (input == null) throw new IOException("Unable to open source file");
-        return input;
-    }
-
-    public static void copyAtomically(Uri source, File target) throws IOException {
-        try (InputStream input = openInputStream(source)) {
-            copyAtomically(input, target);
-        }
-    }
-
-    public static void copyAtomically(File source, File target) throws IOException {
-        if (source.getCanonicalFile().equals(target.getCanonicalFile())) return;
-        try (InputStream input = new FileInputStream(source)) {
-            copyAtomically(input, target);
-        }
-    }
-
-    public static void writeAtomically(byte[] data, File target) throws IOException {
-        try (InputStream input = new ByteArrayInputStream(data)) {
-            copyAtomically(input, target);
-        }
-    }
-
-    private static void copyAtomically(InputStream input, File target) throws IOException {
-        File temp = createTempFile(target);
-        try {
-            copyToFile(input, temp);
-            Path.move(temp, target);
-        } finally {
-            Path.clear(temp);
-        }
-    }
-
     private static File createTempFile(File target) throws IOException {
         File parent = target.getAbsoluteFile().getParentFile();
         if (parent == null) throw new IOException("Target has no parent directory");
         if (!parent.isDirectory() && !parent.mkdirs() && !parent.isDirectory()) throw new IOException("Unable to create target directory");
         return File.createTempFile("copy-", ".tmp", parent);
-    }
-
-    private static void copyToFile(InputStream input, File target) throws IOException {
-        try (FileOutputStream output = new FileOutputStream(target)) {
-            transfer(input, output, Long.MAX_VALUE);
-            output.flush();
-            output.getFD().sync();
-        }
     }
 
     private static void transfer(InputStream input, OutputStream output, long maxBytes) throws IOException {
@@ -113,6 +59,20 @@ public class FileUtil {
             totalBytes += count;
             if (totalBytes > maxBytes) throw new IOException("File is too large");
             output.write(buffer, 0, count);
+        }
+    }
+
+    public static void copyAtomically(Uri source, File target) throws IOException {
+        File temp = createTempFile(target);
+        try (InputStream input = App.get().getContentResolver().openInputStream(source)) {
+            if (input == null) throw new IOException("Unable to open source file");
+            try (FileOutputStream output = new FileOutputStream(temp)) {
+                transfer(input, output, Long.MAX_VALUE);
+                output.getFD().sync();
+            }
+            Path.move(temp, target);
+        } finally {
+            Path.clear(temp);
         }
     }
 
@@ -249,41 +209,4 @@ public class FileUtil {
         int digitGroups = (int) (Math.log10(size) / Math.log10(1024));
         return new DecimalFormat("#,##0.#").format(size / Math.pow(1024, digitGroups)) + " " + units[digitGroups];
     }
-    public static long getDirectorySize(File dir) {
-        if (dir == null || !dir.exists()) return 0L;
-        if (dir.isFile()) return dir.length();
-        File[] files = dir.listFiles();
-        if (files == null) return 0L;
-        long total = 0L;
-        for (File file : files) total += getDirectorySize(file);
-        return total;
-    }
-
-    public static long getAvailableStorageSpace(File file) {
-        return getStorageSpace(file).availableBytes();
-    }
-
-    public static StorageSpace getStorageSpace(File file) {
-        try {
-            File target = file;
-            while (target != null && !target.exists()) target = target.getParentFile();
-            if (target == null) return StorageSpace.unavailable();
-            StatFs stat = new StatFs(target.getAbsolutePath());
-            return StorageSpace.of(stat.getAvailableBytes(), stat.getTotalBytes());
-        } catch (Throwable e) {
-            return StorageSpace.unavailable();
-        }
-    }
-
-    public record StorageSpace(boolean available, long availableBytes, long totalBytes) {
-        public static StorageSpace of(long availableBytes, long totalBytes) {
-            boolean valid = availableBytes >= 0L && totalBytes > 0L;
-            return valid ? new StorageSpace(true, availableBytes, totalBytes) : unavailable();
-        }
-
-        public static StorageSpace unavailable() {
-            return new StorageSpace(false, 0L, 0L);
-        }
-    }
-
 }

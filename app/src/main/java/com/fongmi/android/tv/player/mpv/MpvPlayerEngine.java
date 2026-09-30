@@ -1,29 +1,31 @@
 package com.fongmi.android.tv.player.mpv;
 
-import androidx.media3.common.Format;
+import androidx.annotation.NonNull;
 import androidx.media3.common.MimeTypes;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
+import androidx.media3.common.Tracks;
 import androidx.media3.mpvplayer.MpvPlayer;
 
 import com.fongmi.android.tv.bean.Sub;
+import com.fongmi.android.tv.player.effect.PlayerEffect;
 import com.fongmi.android.tv.player.engine.PlayerEngine;
 import com.fongmi.android.tv.player.media.MediaItemFactory;
 import com.fongmi.android.tv.player.media.PlaySpec;
 
-public class MpvPlayerEngine implements PlayerEngine {
+public class MpvPlayerEngine implements PlayerEngine, Player.Listener {
 
     private final MpvErrorMessageProvider provider;
-    private final Player.Listener externalListener;
+    private final MpvPlayerEffect effect;
     private final MpvPlayer player;
     private PlaySpec spec;
-    private int decode;
 
     public MpvPlayerEngine(int decode, Player.Listener listener) {
-        this.decode = decode;
-        this.externalListener = listener;
-        this.provider = new MpvErrorMessageProvider();
         this.player = MpvUtil.buildPlayer(decode, listener);
+        this.provider = new MpvErrorMessageProvider();
+        this.effect = new MpvPlayerEffect(player);
+        this.player.setAudioOutputListener(effect::applyAudioEffect);
+        this.player.addListener(this);
     }
 
     public static boolean isAvailable() {
@@ -41,16 +43,44 @@ public class MpvPlayerEngine implements PlayerEngine {
     }
 
     @Override
+    public boolean isIsoNavigationPlayback() {
+        return player.canOpenDiscMenu();
+    }
+
+    @Override
+    public boolean hasDiscMenu() {
+        return player.canOpenDiscMenu();
+    }
+
+    @Override
+    public boolean isDiscMenuActive() {
+        return player.isDiscMenuActive();
+    }
+
+    @Override
+    public boolean sendDiscMenuAction(String action) {
+        return player.sendDiscNav(action);
+    }
+
+    @Override
+    public boolean sendDiscMenuPointer(float x, float y, boolean activate) {
+        return player.sendDiscNavPointer(x, y, activate);
+    }
+
+    @Override
     public int getAudioChannelCount() {
-        return Format.NO_VALUE;
+        return player.getAudioChannelCount();
+    }
+
+    @Override
+    public PlayerEffect getEffect() {
+        return effect;
     }
 
     @Override
     public void release() {
-        try {
-            if (externalListener != null) player.removeListener(externalListener);
-        } catch (Throwable ignored) {
-        }
+        player.removeListener(this);
+        player.setAudioOutputListener(null);
         player.release();
     }
 
@@ -61,15 +91,20 @@ public class MpvPlayerEngine implements PlayerEngine {
 
     @Override
     public boolean addSubtitle(Sub sub) {
-        // The bundled MPV implementation reads subtitle configurations from the MediaItem.
-        // Returning false asks PlayerManager to rebuild the current item with the new subtitle.
-        return false;
+        if (sub == null || sub.isEmpty() || player.getCurrentMediaItem() == null) return false;
+        if (player.getPlaybackState() == Player.STATE_IDLE || player.getPlaybackState() == Player.STATE_ENDED) return false;
+        player.addSubtitle(MediaItemFactory.buildSubConfig(sub));
+        return true;
     }
 
     @Override
     public void setDecode(int decode) {
-        this.decode = decode;
-        MpvUtil.setDecode(decode);
+        player.setDecode(decode);
+    }
+
+    @Override
+    public void onTracksChanged(@NonNull Tracks tracks) {
+        effect.applyVideoEffect();
     }
 
     @Override
@@ -79,7 +114,13 @@ public class MpvPlayerEngine implements PlayerEngine {
     }
 
     private void startInternal(long startPositionMs) {
-        player.setMediaItem(MediaItemFactory.from(spec), Math.max(0L, startPositionMs));
+        effect.applyVideoEffect();
+        effect.clearAudioEffect();
+        player.setMediaItem(MediaItemFactory.from(spec), startPositionMs);
+        prepareAndPlay();
+    }
+
+    private void prepareAndPlay() {
         player.prepare();
         player.play();
     }
@@ -97,9 +138,7 @@ public class MpvPlayerEngine implements PlayerEngine {
     @Override
     public ErrorAction handleError(PlaybackException e) {
         return switch (e.errorCode) {
-            case PlaybackException.ERROR_CODE_DECODER_INIT_FAILED,
-                    PlaybackException.ERROR_CODE_DECODER_QUERY_FAILED,
-                    PlaybackException.ERROR_CODE_DECODING_FAILED -> ErrorAction.DECODE;
+            case PlaybackException.ERROR_CODE_DECODER_INIT_FAILED, PlaybackException.ERROR_CODE_DECODER_QUERY_FAILED, PlaybackException.ERROR_CODE_DECODING_FAILED -> ErrorAction.DECODE;
             case PlaybackException.ERROR_CODE_IO_UNSPECIFIED -> retryHls();
             default -> ErrorAction.FATAL;
         };

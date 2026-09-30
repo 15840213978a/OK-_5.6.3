@@ -13,6 +13,7 @@ import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor;
 import androidx.media3.datasource.cache.SimpleCache;
 import androidx.media3.datasource.okhttp.OkHttpDataSource;
 import androidx.media3.exoplayer.drm.DrmSessionManagerProvider;
+import androidx.media3.exoplayer.libass.LibassPlaybackSession;
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
 import androidx.media3.exoplayer.source.MediaSource;
 import androidx.media3.exoplayer.source.preload.MediaSourceFactorySupplier;
@@ -23,7 +24,6 @@ import androidx.media3.extractor.ts.TsExtractor;
 
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.setting.PreloadSetting;
-import com.fongmi.android.tv.utils.FileUtil;
 import com.github.catvod.net.OkHttp;
 import com.github.catvod.utils.Path;
 
@@ -38,15 +38,17 @@ public class ExoMediaSourceFactory implements MediaSource.Factory {
     private static Cache cache;
 
     private final DefaultMediaSourceFactory defaultMediaSourceFactory;
+    private final LibassPlaybackSession libassSession;
     private HttpDataSource.Factory httpDataSourceFactory;
     private DataSource.Factory dataSourceFactory;
     private ExtractorsFactory extractorsFactory;
 
-    public ExoMediaSourceFactory() {
+    public ExoMediaSourceFactory(LibassPlaybackSession libassSession) {
+        this.libassSession = libassSession;
         defaultMediaSourceFactory = new DefaultMediaSourceFactory(getDataSourceFactory(), getExtractorsFactory());
     }
 
-    static MediaSourceFactorySupplier supplier() {
+    static MediaSourceFactorySupplier supplier(LibassPlaybackSession libassSession) {
         return new MediaSourceFactorySupplier() {
             @NonNull
             @Override
@@ -62,7 +64,7 @@ public class ExoMediaSourceFactory implements MediaSource.Factory {
 
             @Override
             public MediaSource.Factory get() {
-                return new ExoMediaSourceFactory();
+                return new ExoMediaSourceFactory(libassSession);
             }
         };
     }
@@ -85,8 +87,8 @@ public class ExoMediaSourceFactory implements MediaSource.Factory {
     }
 
     private static long getMaxCacheSize(File dir) {
-        long usedBytes = FileUtil.getDirectorySize(dir);
-        long availableBytes = Math.max(0, FileUtil.getAvailableStorageSpace(dir));
+        long usedBytes = Path.size(dir);
+        long availableBytes = Math.max(0, Path.available(dir));
         long storageBudget = (usedBytes + availableBytes) * CACHE_SPACE_PERCENT / 100;
         return Math.min(PreloadSetting.getSizeBytes(), storageBudget);
     }
@@ -113,6 +115,12 @@ public class ExoMediaSourceFactory implements MediaSource.Factory {
     @Override
     public MediaSource createMediaSource(@NonNull MediaItem mediaItem) {
         getHttpDataSourceFactory().setDefaultRequestProperties(ExoUtil.extractHeaders(mediaItem));
+        if (libassSession.isAvailable()) {
+            LibassPlaybackSession.MediaComponents components = libassSession.createMediaComponents(mediaItem, getExtractorsFactory());
+            return new DefaultMediaSourceFactory(getDataSourceFactory(), components.extractorsFactory)
+                    .setSubtitleParserFactory(components.subtitleParserFactory)
+                    .createMediaSource(mediaItem);
+        }
         return defaultMediaSourceFactory.createMediaSource(mediaItem);
     }
 

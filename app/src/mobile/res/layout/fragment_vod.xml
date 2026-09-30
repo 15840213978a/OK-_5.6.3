@@ -57,42 +57,54 @@
                 android:paddingEnd="8dp"
                 android:paddingBottom="8dp">
 
-                <com.google.android.material.card.MaterialCardView android:id="@+id/quickSearch" style="@style/OkQuickCard">
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/quickSearch"
+                    style="@style/OkQuickCard">
                     <androidx.appcompat.widget.LinearLayoutCompat style="@style/OkQuickContent">
                         <androidx.appcompat.widget.AppCompatImageView style="@style/OkQuickIcon" android:src="@drawable/ic_action_search" />
                         <com.google.android.material.textview.MaterialTextView style="@style/OkQuickText" android:text="@string/ok_quick_search" />
                     </androidx.appcompat.widget.LinearLayoutCompat>
                 </com.google.android.material.card.MaterialCardView>
 
-                <com.google.android.material.card.MaterialCardView android:id="@+id/quickPush" style="@style/OkQuickCard">
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/quickPush"
+                    style="@style/OkQuickCard">
                     <androidx.appcompat.widget.LinearLayoutCompat style="@style/OkQuickContent">
                         <androidx.appcompat.widget.AppCompatImageView style="@style/OkQuickIcon" android:src="@drawable/ic_fab_link" />
                         <com.google.android.material.textview.MaterialTextView style="@style/OkQuickText" android:text="@string/ok_quick_push" />
                     </androidx.appcompat.widget.LinearLayoutCompat>
                 </com.google.android.material.card.MaterialCardView>
 
-                <com.google.android.material.card.MaterialCardView android:id="@+id/quickLocal" style="@style/OkQuickCard">
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/quickLocal"
+                    style="@style/OkQuickCard">
                     <androidx.appcompat.widget.LinearLayoutCompat style="@style/OkQuickContent">
                         <androidx.appcompat.widget.AppCompatImageView style="@style/OkQuickIcon" android:src="@drawable/ic_ok_local" />
                         <com.google.android.material.textview.MaterialTextView style="@style/OkQuickText" android:text="@string/ok_quick_local" />
                     </androidx.appcompat.widget.LinearLayoutCompat>
                 </com.google.android.material.card.MaterialCardView>
 
-                <com.google.android.material.card.MaterialCardView android:id="@+id/quickKeep" style="@style/OkQuickCard">
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/quickKeep"
+                    style="@style/OkQuickCard">
                     <androidx.appcompat.widget.LinearLayoutCompat style="@style/OkQuickContent">
                         <androidx.appcompat.widget.AppCompatImageView style="@style/OkQuickIcon" android:src="@drawable/ic_action_keep" />
                         <com.google.android.material.textview.MaterialTextView style="@style/OkQuickText" android:text="@string/ok_quick_keep" />
                     </androidx.appcompat.widget.LinearLayoutCompat>
                 </com.google.android.material.card.MaterialCardView>
 
-                <com.google.android.material.card.MaterialCardView android:id="@+id/quickHistory" style="@style/OkQuickCard">
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/quickHistory"
+                    style="@style/OkQuickCard">
                     <androidx.appcompat.widget.LinearLayoutCompat style="@style/OkQuickContent">
                         <androidx.appcompat.widget.AppCompatImageView style="@style/OkQuickIcon" android:src="@drawable/ic_action_history" />
                         <com.google.android.material.textview.MaterialTextView style="@style/OkQuickText" android:text="@string/ok_quick_history" />
                     </androidx.appcompat.widget.LinearLayoutCompat>
                 </com.google.android.material.card.MaterialCardView>
 
-                <com.google.android.material.card.MaterialCardView android:id="@+id/quickSite" style="@style/OkQuickCard">
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/quickSite"
+                    style="@style/OkQuickCard">
                     <androidx.appcompat.widget.LinearLayoutCompat style="@style/OkQuickContent">
                         <androidx.appcompat.widget.AppCompatImageView style="@style/OkQuickIcon" android:src="@drawable/ic_action_site" />
                         <com.google.android.material.textview.MaterialTextView style="@style/OkQuickText" android:text="@string/ok_quick_site" />

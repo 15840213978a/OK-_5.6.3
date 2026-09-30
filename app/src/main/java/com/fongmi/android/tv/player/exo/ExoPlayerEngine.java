@@ -1,28 +1,35 @@
 package com.fongmi.android.tv.player.exo;
 
 import androidx.annotation.NonNull;
+import android.util.Log;
 import androidx.media3.common.Format;
 import androidx.media3.common.MediaItem;
+import androidx.media3.common.MimeTypes;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
 import androidx.media3.common.Tracks;
+import androidx.media3.common.VideoSize;
 import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.exoplayer.DecoderReuseEvaluation;
 import androidx.media3.exoplayer.analytics.AnalyticsListener;
 import androidx.media3.exoplayer.audio.AudioSink;
 import androidx.media3.exoplayer.source.MediaSource;
+import androidx.media3.ui.PlayerView;
+import androidx.media3.common.util.CodecSpecificDataUtil;
 
 import com.fongmi.android.tv.player.effect.PlayerEffect;
 import com.fongmi.android.tv.player.engine.PlayerEngine;
 import com.fongmi.android.tv.player.media.MediaItemFactory;
 import com.fongmi.android.tv.player.media.PlaySpec;
 
-public class ExoPlayerEngine implements PlayerEngine, AnalyticsListener {
+public class ExoPlayerEngine implements PlayerEngine, AnalyticsListener, Player.Listener {
 
     private final ExoErrorMessageProvider provider;
     private final ExoPlayerSession session;
     private final ExoPlayerEffect effect;
     private final ExoDiskPreload preload;
     private final ExoPlayer player;
+    private boolean dolbyVisionVideoSelected;
     private PlaySpec spec;
 
     public ExoPlayerEngine(int decode, Player.Listener listener) {
@@ -32,6 +39,7 @@ public class ExoPlayerEngine implements PlayerEngine, AnalyticsListener {
         this.session = new ExoPlayerSession(decode, listener, effect.getAudioProcessor());
         this.player = this.session.player();
         this.player.addAnalyticsListener(this);
+        this.player.addListener(this);
         this.effect.setPlayer(player);
     }
 
@@ -48,6 +56,29 @@ public class ExoPlayerEngine implements PlayerEngine, AnalyticsListener {
     @Override
     public void onTracksChanged(@NonNull EventTime eventTime, @NonNull Tracks tracks) {
         effect.applyVideoEffect();
+        session.setActiveTracks(tracks);
+    }
+
+    @Override
+    public void onVideoSizeChanged(@NonNull VideoSize size) {
+        session.setVideoSize(size);
+    }
+
+    @Override
+    public void onVideoInputFormatChanged(@NonNull EventTime eventTime, @NonNull Format format,
+                                          DecoderReuseEvaluation decoderReuseEvaluation) {
+        dolbyVisionVideoSelected = MimeTypes.VIDEO_DOLBY_VISION.equals(format.sampleMimeType);
+        if (dolbyVisionVideoSelected) {
+            Log.i("DolbyVisionPlayback", "Profile=" + format.codecs + ", RPU configuration="
+                    + CodecSpecificDataUtil.hasDolbyVisionRpu(format) + ", resolution="
+                    + format.width + "x" + format.height);
+        }
+    }
+
+    @Override
+    public void onVideoDecoderInitialized(@NonNull EventTime eventTime, @NonNull String decoderName,
+                                          long initializedTimestampMs, long initializationDurationMs) {
+        if (dolbyVisionVideoSelected) Log.i("DolbyVisionPlayback", "Selected video decoder=" + decoderName);
     }
 
     @Override
@@ -58,6 +89,31 @@ public class ExoPlayerEngine implements PlayerEngine, AnalyticsListener {
     @Override
     public Player getPlayer() {
         return player;
+    }
+
+    @Override
+    public boolean isIsoNavigationPlayback() {
+        return player.isDiscNavigationPlayback();
+    }
+
+    @Override
+    public boolean hasDiscMenu() {
+        return player.hasDiscMenu();
+    }
+
+    @Override
+    public boolean isDiscMenuActive() {
+        return player.isDiscMenuActive();
+    }
+
+    @Override
+    public boolean sendDiscMenuAction(String action) {
+        return player.sendDiscMenuAction(action);
+    }
+
+    @Override
+    public boolean sendDiscMenuPointer(float x, float y, boolean activate) {
+        return player.sendDiscMenuPointer(x, y, activate);
     }
 
     @Override
@@ -74,6 +130,7 @@ public class ExoPlayerEngine implements PlayerEngine, AnalyticsListener {
     @Override
     public void release() {
         player.removeAnalyticsListener(this);
+        player.removeListener(this);
         preload.release();
         effect.release();
         session.release();
@@ -82,6 +139,11 @@ public class ExoPlayerEngine implements PlayerEngine, AnalyticsListener {
     @Override
     public void setDecode(int decode) {
         session.setDecode(decode);
+    }
+
+    @Override
+    public void bindPlayerView(PlayerView view) {
+        session.bindPlayerView(view);
     }
 
     @Override
@@ -123,6 +185,7 @@ public class ExoPlayerEngine implements PlayerEngine, AnalyticsListener {
 
     private void startInternal(long position) {
         MediaItem item = MediaItemFactory.from(spec);
+        session.setCurrentMediaItem(item);
         MediaSource source = session.usePreloadedMediaSource(item);
         effect.clearAudioEffect();
         if (source == null) player.setMediaItem(item, position);

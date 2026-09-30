@@ -7,10 +7,12 @@ import android.view.inputmethod.EditorInfo;
 import androidx.fragment.app.FragmentActivity;
 import androidx.viewbinding.ViewBinding;
 
+import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.databinding.DialogMpvConfBinding;
 import com.fongmi.android.tv.event.ServerEvent;
 import com.fongmi.android.tv.player.mpv.MpvConfigFile;
 import com.fongmi.android.tv.server.Server;
+import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.QRCode;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
@@ -58,8 +60,8 @@ public class MpvConfDialog extends BaseAlertDialog {
     }
 
     private void onPositive(View view) {
-        MpvConfigFile.write(binding.text.getText().toString());
-        dismiss();
+        if (MpvConfigFile.write(binding.text.getText().toString())) dismiss();
+        else Notify.show("保存失败");
     }
 
     private void onNegative(View view) {

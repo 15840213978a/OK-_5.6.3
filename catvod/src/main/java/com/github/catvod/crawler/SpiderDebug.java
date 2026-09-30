@@ -8,12 +8,6 @@ public class SpiderDebug {
 
     private static final String TAG = SpiderDebug.class.getSimpleName();
 
-    // New MPV diagnostics use this gate. The 5.6.3 catvod base did not expose it.
-    // Keep it off by default so release playback is not burdened by debug-only watchdogs.
-    public static boolean isEnabled() {
-        return false;
-    }
-
     public static void log(Throwable th) {
         if (th != null) th.printStackTrace();
     }

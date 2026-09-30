@@ -53,9 +53,8 @@ public class SubtitleSetting {
     private static final float DEFAULT_TEXT_OPACITY = 1.0f;
     private static final float DEFAULT_EDGE_OPACITY = 1.0f;
     private static final float DEFAULT_BACKGROUND_OPACITY = 1.0f;
-    // WebHTV-pinned Media3 CaptionStyleCompat does not expose the older FM constants.
-    private static final float DEFAULT_EDGE_WIDTH = 2.0f;
-    private static final float DEFAULT_SHADOW = 2.0f;
+    private static final float DEFAULT_EDGE_WIDTH = CaptionStyleCompat.DEFAULT_EDGE_WIDTH;
+    private static final float DEFAULT_SHADOW = CaptionStyleCompat.DEFAULT_SHADOW_OFFSET;
     private static final int DEFAULT_SECONDARY_TRACK = SECONDARY_SUBTITLE_OFF;
     private static final float DEFAULT_SECONDARY_POSITION = 10.0f;
 
@@ -258,8 +257,7 @@ public class SubtitleSetting {
         CaptioningManager manager = (CaptioningManager) context.getSystemService(Context.CAPTIONING_SERVICE);
         if (getStyleSource() == STYLE_SOURCE_ORIGINAL) return CaptionStyleCompat.DEFAULT;
         if (isSystemStyle()) return manager == null ? CaptionStyleCompat.DEFAULT : CaptionStyleCompat.createFromCaptionStyle(manager.getUserStyle());
-        // Pinned Media3 uses the standard 6-argument CaptionStyleCompat constructor.
-        return new CaptionStyleCompat(getTextColor(), getBackgroundColor(), Color.TRANSPARENT, getEdgeType(), getEdgeColor(), null);
+        return new CaptionStyleCompat(getTextColor(), getBackgroundColor(), Color.TRANSPARENT, getEdgeType(), getEdgeColor(), null, getEdgeWidth(), getShadow());
     }
 
     public static void applyStyle(Context context, @Nullable SubtitleView subtitleView) {
@@ -268,7 +266,7 @@ public class SubtitleSetting {
         subtitleView.setStyle(getStyle(context));
         subtitleView.setApplyEmbeddedStyles(!isStyleForced());
         subtitleView.setApplyEmbeddedFontSizes(true);
-        if (isScaleApplied()) subtitleView.setFractionalTextSize(SubtitleView.DEFAULT_TEXT_SIZE_FRACTION * getScale(context));
+        if (isScaleApplied()) subtitleView.setTextSizeScale(getScale(context));
         if (isPositionSet()) subtitleView.setBottomPosition(getPosition() / 100.0f);
     }
 

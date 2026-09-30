@@ -1,70 +1,109 @@
 package com.fongmi.android.tv.player.mpv;
 
+import android.content.pm.PackageManager;
+
 import androidx.media3.common.Player;
+import androidx.media3.common.util.Util;
+import androidx.media3.mpvplayer.MpvAndroidOptions;
 import androidx.media3.mpvplayer.MpvPlayer;
 import androidx.media3.mpvplayer.MpvPlayerConfig;
+import androidx.media3.mpvplayer.MpvSubtitleOptions;
 
 import com.fongmi.android.tv.App;
-import com.fongmi.android.tv.player.engine.PlayerEngine;
+import com.fongmi.android.tv.R;
+import com.fongmi.android.tv.player.track.LangUtil;
+import com.fongmi.android.tv.setting.DecodeSetting;
 import com.fongmi.android.tv.setting.PlayerSetting;
+import com.fongmi.android.tv.setting.PreloadSetting;
 import com.fongmi.android.tv.setting.SubtitleSetting;
+import com.fongmi.android.tv.utils.Notify;
+import com.github.catvod.utils.Path;
 
-import is.xyz.mpv.MPVLib;
+import java.io.File;
+import java.util.List;
+
+import org.json.JSONException;
 
 public final class MpvUtil {
 
-    private MpvUtil() {
-    }
+    private static final String ASSET_CA_FILE = "cacert.pem";
+    private static final int VULKAN_1_2 = 0x00402000;
+    private static final double DEFAULT_SUB_POS = 100.0;
+    private static final double DEFAULT_SUB_SCALE = 1.0;
+    private static final double MIN_SUB_POS = 0.0;
+    private static final double MAX_SUB_POS = 150.0;
 
     public static boolean isAvailable() {
         try {
-            return MPVLib.ensureLoaded(App.get());
+            return MpvPlayer.isAvailable();
         } catch (Throwable e) {
             return false;
         }
     }
 
-    public static MpvPlayer buildPlayer(int decode, Player.Listener listener) {
-        boolean hard = decode == PlayerEngine.HARD;
-        boolean vulkan = PlayerSetting.isMpvVulkan() && MPVLib.isVulkanRendererAvailable(App.get());
-        int bufferSeconds = Math.max(15, PlayerSetting.getBuffer() * 5);
-        long demuxerBytes = 64L * 1024L * 1024L;
-
-        MpvPlayerConfig.Builder builder = MpvPlayerConfig.builder(App.get())
-                .hwdec(hard ? "mediacodec,mediacodec-copy" : "no")
-                .cache(true)
-                .demuxerMaxBytes(demuxerBytes)
-                .demuxerMaxBackBytes(demuxerBytes)
-                .cacheSeconds(bufferSeconds)
-                .demuxerReadaheadSeconds(bufferSeconds)
-                .logLevel(PlayerSetting.isDebug() ? "all=v" : "all=warn");
-
-        if (vulkan) {
-            builder.vo("gpu-next").gpuContext("androidvk").gpuApi("vulkan").openglEs(false);
-        } else {
-            builder.vo(PlayerSetting.isMpvGpuNext() ? "gpu-next" : "gpu")
-                    .gpuContext("android")
-                    .gpuApi("opengl")
-                    .openglEs(true);
+    public static List<MpvScripts.Item> readScripts() {
+        try {
+            return MpvScripts.read();
+        } catch (JSONException e) {
+            Notify.show(Notify.getError(R.string.mpv_script_error, e));
+            return List.of();
         }
+    }
 
-        MpvPlayer player = new MpvPlayer(App.get(), builder.build());
-        if (listener != null) player.addListener(listener);
-        setSubtitleStyle(player);
+    public static boolean isVulkanSupported() {
+        return App.get().getPackageManager().hasSystemFeature(PackageManager.FEATURE_VULKAN_HARDWARE_VERSION, VULKAN_1_2);
+    }
+
+    public static MpvPlayer buildPlayer(int decode, Player.Listener listener) {
+        MpvPlayer player = new MpvPlayer.Builder(App.get()).setDecode(decode).setConfig(buildConfig()).build();
+        setPreferredTextLanguages(player);
+        player.addListener(listener);
         return player;
     }
 
     public static void setSubtitleStyle(MpvPlayer player) {
-        if (player == null) return;
-        float textSize = SubtitleSetting.getScale(App.get());
-        float position = SubtitleSetting.getPosition();
-        player.setSubtitleStyle(textSize, position);
+        player.setSubtitleOptions(buildSubtitleOptions());
     }
 
-    public static void setDecode(int decode) {
-        try {
-            MPVLib.setPropertyString("hwdec", decode == PlayerEngine.HARD ? "mediacodec,mediacodec-copy" : "no");
-        } catch (Throwable ignored) {
-        }
+    private static MpvPlayerConfig buildConfig() {
+        File configDir = Path.mpv();
+        File cacheDir = Path.mpvCache();
+        MpvPlayerConfig.Builder builder = new MpvPlayerConfig.Builder().addConfigDirectory(configDir).addAndroidFontConfig(configDir, cacheDir).addAndroidDefaults(buildAndroidOptions(cacheDir)).addTlsCaFileFromAsset(App.get(), ASSET_CA_FILE, Path.files(ASSET_CA_FILE)).addAndroidSubtitleOptions(App.get(), buildSubtitleOptions());
+        addPreloadOptions(builder);
+        return builder.build();
+    }
+
+    private static MpvAndroidOptions buildAndroidOptions(File shaderCacheDirectory) {
+        MpvAndroidOptions.Builder builder = new MpvAndroidOptions.Builder().setShaderCacheDirectory(shaderCacheDirectory).setAudioPassthroughEnabled(DecodeSetting.isAudioPassThrough()).setDolbyVisionOutputPolicy(DecodeSetting.getDolbyVisionOutputPolicy());
+        builder.setVulkanEnabled(isVulkanSupported() && PlayerSetting.isMpvVulkan());
+        builder.setGpuNextEnabled(PlayerSetting.isMpvGpuNext());
+        return builder.build();
+    }
+
+    private static void setPreferredTextLanguages(MpvPlayer player) {
+        player.setTrackSelectionParameters(player.getTrackSelectionParameters().buildUpon().setPreferredTextLanguages(LangUtil.getPreferredTextLanguages()).build());
+    }
+
+    private static void addPreloadOptions(MpvPlayerConfig.Builder builder) {
+        if (!PreloadSetting.isEnabled()) return;
+        builder.addDiskCacheOptions(Path.mpvCache(), PreloadSetting.getTimeSeconds());
+    }
+
+    private static MpvSubtitleOptions buildSubtitleOptions() {
+        MpvSubtitleOptions.Builder builder = new MpvSubtitleOptions.Builder().setPosition(getSubtitlePosition()).setScale(getSubtitleScale()).setSecondarySubtitle(SubtitleSetting.getSecondaryTrackId(), SubtitleSetting.getSecondaryPosition(), SubtitleSetting.isStyleForced());
+        if (SubtitleSetting.isCustomStyle()) builder.setCustomStyle(SubtitleSetting.getTextColor(), SubtitleSetting.getBackgroundColor(), SubtitleSetting.getEdgeType(), SubtitleSetting.getEdgeColor(), SubtitleSetting.getEdgeWidth(), SubtitleSetting.getShadow());
+        else if (SubtitleSetting.isSystemStyle()) builder.setSystemCaptionStyle();
+        return builder.build();
+    }
+
+    private static double getSubtitlePosition() {
+        float position = SubtitleSetting.getPosition();
+        if (!SubtitleSetting.isPositionSet()) return DEFAULT_SUB_POS;
+        return Util.constrainValue(DEFAULT_SUB_POS - position, MIN_SUB_POS, MAX_SUB_POS);
+    }
+
+    private static double getSubtitleScale() {
+        if (!SubtitleSetting.isScaleApplied()) return DEFAULT_SUB_SCALE;
+        return SubtitleSetting.getScale(App.get());
     }
 }

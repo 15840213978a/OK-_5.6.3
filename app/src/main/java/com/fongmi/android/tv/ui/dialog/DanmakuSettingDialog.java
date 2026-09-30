@@ -12,6 +12,7 @@ import androidx.viewbinding.ViewBinding;
 
 import com.fongmi.android.tv.databinding.DialogDanmakuSettingBinding;
 import com.fongmi.android.tv.player.PlayerManager;
+import com.fongmi.android.tv.ui.activity.PlaybackActivity;
 import com.fongmi.android.tv.utils.ResUtil;
 import com.fongmi.android.tv.utils.Util;
 
@@ -33,6 +34,8 @@ public final class DanmakuSettingDialog {
     }
 
     public void show(FragmentActivity activity) {
+        if (player == null && activity instanceof PlaybackActivity playback) player = playback.getPlaybackPlayer();
+        if (player == null) return;
         FragmentManager manager = activity.getSupportFragmentManager();
         for (Fragment fragment : manager.getFragments()) if (fragment instanceof BottomSheet || fragment instanceof SideSheet) return;
         if (Util.isFullscreenLand(activity) || Util.isLeanback()) new SideSheet(player).show(manager, null);

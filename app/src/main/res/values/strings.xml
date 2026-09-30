@@ -159,14 +159,7 @@
     <string name="subtitle_offset">Subtitle offset</string>
     <string name="subtitle_size">Size</string>
     <string name="subtitle_position">Position</string>
-    <string name="subtitle_style">Style</string>
     <string name="subtitle_style_source">Style source</string>
-    <string name="playback_font">Font</string>
-    <string name="playback_font_default">System default</string>
-    <string name="playback_font_import">Import font</string>
-    <string name="playback_font_imported">Font imported: %1$s</string>
-    <string name="playback_font_import_failed">Unable to import font</string>
-    <string name="playback_font_load_failed">Unable to load fonts</string>
     <string name="subtitle_style_original">Original</string>
     <string name="subtitle_style_system">System</string>
     <string name="subtitle_style_custom">Custom</string>
@@ -184,7 +177,6 @@
     <string name="subtitle_background">Background</string>
     <string name="subtitle_background_opacity">Background transparency</string>
     <string name="subtitle_secondary_track">Secondary subtitles</string>
-    <string name="subtitle_secondary_default">Default</string>
     <string name="subtitle_secondary_off">Off</string>
     <string name="subtitle_secondary_auto">Auto</string>
     <string name="subtitle_secondary_select">Select</string>
@@ -290,7 +282,7 @@
     <string name="player">Player</string>
     <string name="player_engine">Engine</string>
     <string name="player_debug">Debug</string>
-    <string name="player_render">Video output</string>
+    <string name="player_render">Render</string>
     <string name="player_scale">Scale</string>
     <string name="player_libass">libass</string>
     <string name="player_background">Background play</string>
@@ -314,11 +306,7 @@
     <string name="player_mpv_conf">mpv.conf</string>
     <string name="player_mpv_gpu_next">gpu-next</string>
     <string name="player_mpv_vulkan">vulkan</string>
-    <string name="player_mpv_conf_priority_hint">Player settings take priority; reopen playback to apply.</string>
-    <string name="player_mpv_conf_conflict_hint">Player settings will override: %1$s</string>
     <string name="player_mpv_conf_import_success">Imported mpv.conf</string>
-    <string name="player_mpv_conf_import_failed">Unable to import mpv.conf</string>
-    <string name="player_mpv_conf_save_failed">Unable to save mpv.conf</string>
     <string name="player_ua">User-Agent</string>
 
     <!-- Danmaku -->
@@ -335,7 +323,6 @@
 
     <!-- Dialog -->
     <string name="dialog_edit">Edit</string>
-    <string name="dialog_import">Import</string>
     <string name="dialog_positive">OK</string>
     <string name="dialog_negative">Cancel</string>
     <string name="dialog_select_edition">Select title</string>
@@ -346,7 +333,6 @@
 
     <!-- Error -->
     <string name="error_config_get">Configuration get failed</string>
-    <string name="error_file_open">Unable to open file</string>
     <string name="error_play_next">It\'s the last episode!</string>
     <string name="error_play_prev">It\'s the first episode!</string>
     <string name="error_play_parse">Unable to parse url</string>
@@ -439,5 +425,112 @@
         <item>Select subtitle track</item>
     </string-array>
 
-    <string name="vod_home">Home</string>
+
+    <!-- Retained by shared playback and file dialogs -->
+    <string name="play_disc_menu">Top menu</string>
+    <string name="play_disc_menu_unavailable">No usable disc menu</string>
+    <string name="play_disc_menu_timeout">Disc menu did not open; try again</string>
+    <string name="subtitle_primary_position">Primary position</string>
+    <string name="subtitle_style">Style</string>
+    <string name="playback_font">Font</string>
+    <string name="playback_font_default">System default</string>
+    <string name="playback_font_import">Import font</string>
+    <string name="playback_font_imported">Font imported: %1$s</string>
+    <string name="playback_font_import_failed">Unable to import font</string>
+    <string name="playback_font_load_failed">Unable to load fonts</string>
+    <string name="subtitle_secondary_default">Default</string>
+    <string name="subtitle_primary_role">P</string>
+    <string name="subtitle_secondary_role">S</string>
+    <string name="local">Local</string>
+    <string name="player_mpv_conf_priority_hint">Player settings take priority; reopen playback to apply.</string>
+    <string name="player_mpv_conf_conflict_hint">Player settings will override: %1$s</string>
+    <string name="player_mpv_conf_import_failed">Unable to import mpv.conf</string>
+    <string name="player_mpv_conf_save_failed">Unable to save mpv.conf</string>
+    <string name="dialog_import">Import</string>
+    <string name="file_export_success">File exported</string>
+    <string name="error_file_open">Unable to open file</string>
+    <string name="error_file_save">Unable to save file</string>
+    <string name="bdj_preparing">Preparing BD-J menu</string>
+    <string name="error_bdj_prepare">ISO menu check or BD-J setup failed: %1$s</string>
+    <string name="content_title">Browse content</string>
+    <string name="content_search">Search content</string>
+    <string name="content_search_action">Search</string>
+    <string name="content_current">Current position</string>
+    <string name="content_empty">No loaded content yet</string>
+    <string name="content_subtitle_unsupported">Browsing is unavailable for this subtitle track</string>
+    <string name="content_subtitle_loading">Loading subtitles…</string>
+    <string name="content_subtitle_partial">Only decoded subtitles are available; more may appear during playback</string>
+    <string name="content_subtitle_truncated">Subtitle memory limit reached; only retained content is searchable</string>
+    <string name="content_subtitle_error">Subtitle text could not be indexed</string>
+    <string name="content_subtitle_unselected">Select a subtitle track first</string>
+    <string name="content_no_match">No matching content</string>
+    <string name="content_following">Following playback</string>
+    <string name="content_browsing">Browsing</string>
+    <string name="content_remote_hint">Press Right to reach Current position</string>
+    <string name="content_image_subtitle">[Image subtitle]</string>
+    <string name="content_retry">Retry subtitles</string>
+    <string name="content_retry_loading">Loading…</string>
+    <string name="subtitle_offset_primary">Primary subtitle delay</string>
+    <string name="subtitle_offset_secondary">Secondary subtitle delay</string>
+    <string name="subtitle_offset_both">Both subtitle delays</string>
+    <string name="subtitle_offset_link">Adjust both delays</string>
+    <string name="subtitle_offset_reset">Reset subtitle timing</string>
+    <string name="subtitle_offset_limit">Subtitle delay must stay within ±300 seconds.</string>
+    <string name="player_audio_decoder_mode">Audio decoder</string>
+    <string name="player_video_decoder_mode">Video decoder</string>
+    <string name="decoder_mode_auto">Auto</string>
+    <string name="decoder_mode_hardware">Hardware</string>
+    <string name="decoder_mode_software">System software</string>
+    <string name="decoder_mode_ffmpeg">FFmpeg</string>
+    <string name="track_decoder_mode">Decoder: %1$s</string>
+    <string name="dialog_action_search_subtitles">Search subtitles</string>
+    <string name="dialog_action_load_subtitles">Load subtitles</string>
+    <string name="dialog_action_search_danmaku">Search danmaku</string>
+    <string name="dialog_action_load_danmaku">Load danmaku</string>
+    <string name="dialog_action_search_settings">Search settings</string>
+    <string name="mpv_script_buttons">Scripts</string>
+    <string name="mpv_script_tab_buttons">Buttons</string>
+    <string name="mpv_script_tab_automatic">Startup</string>
+    <string name="mpv_script_add">Add</string>
+    <string name="mpv_script_add_button">Add button</string>
+    <string name="mpv_script_empty">No buttons yet.</string>
+    <string name="mpv_script_auto_empty">No startup Lua scripts imported.</string>
+    <string name="mpv_script_import">Import Lua</string>
+    <string name="mpv_script_delete">Delete</string>
+    <string name="mpv_script_rename">Rename</string>
+    <string name="mpv_script_replace">Replace Lua</string>
+    <string name="mpv_script_title">Name</string>
+    <string name="mpv_script_enable">Enable</string>
+    <string name="mpv_script_disable">Disable</string>
+    <string name="mpv_script_enabled">Enabled</string>
+    <string name="mpv_script_disabled">Disabled</string>
+    <string name="mpv_script_error">MPV operation failed</string>
+    <string name="mpv_script_timeout">No response; queued actions cancelled.</string>
+    <string name="mpv_script_unavailable">Start MPV playback first.</string>
+    <string name="mpv_script_add_command">Add command button</string>
+    <string name="mpv_script_edit_command">Edit command</string>
+    <string name="mpv_script_command">MPV command</string>
+    <string name="mpv_script_command_detail">Enter a name and command.</string>
+    <string name="mpv_script_import_detail">Create a playback button from a Lua file.</string>
+    <string name="mpv_script_action">Script action</string>
+    <string name="mpv_script_status">Execution status</string>
+    <string name="mpv_script_no_status">No execution status.</string>
+    <string name="mpv_script_running">Running</string>
+    <string name="mpv_script_done">Execution completed</string>
+    <string name="mpv_script_failed">Execution failed</string>
+    <string name="mpv_script_hide">Hide button</string>
+    <string name="mpv_script_show">Show button</string>
+    <string name="mpv_script_hidden">Hidden</string>
+    <string name="mpv_script_move_earlier">Move earlier</string>
+    <string name="mpv_script_move_later">Move later</string>
+    <string name="mpv_script_loading">Loading</string>
+    <string name="mpv_script_loaded">Loaded</string>
+    <string name="speed_value_05" translatable="false">0.5</string>
+    <string name="speed_value_08" translatable="false">0.8</string>
+    <string name="speed_value_10" translatable="false">1.0</string>
+    <string name="speed_value_12" translatable="false">1.2</string>
+    <string name="speed_value_15" translatable="false">1.5</string>
+    <string name="speed_value_20" translatable="false">2.0</string>
+    <string name="speed_value_30" translatable="false">3.0</string>
+    <string name="speed_value_50" translatable="false">5.0</string>
 </resources>

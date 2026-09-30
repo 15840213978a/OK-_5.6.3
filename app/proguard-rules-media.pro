@@ -27,6 +27,14 @@
     native <methods>;
 }
 
+
+# 5.6.6 name-based JNI bridges. These class names must not be obfuscated because
+# libisoJNI exports Java_* symbols and libffmpegDoviJNI registers this class by name.
+-keep class androidx.media3.extractor.iso.udf.NativeUdfFileSystem { *; }
+-keep class androidx.media3.extractor.iso.udf.NativeUdfFileSystem$UnsupportedImageException { *; }
+-keep class androidx.media3.decoder.ffmpeg.FfmpegDolbyVisionP5Native { *; }
+-keep class androidx.media3.decoder.ffmpeg.FfmpegDolbyVisionP5Native$** { *; }
+
 -keep, includedescriptorclasses class androidx.media3.decoder.ffmpeg.FfmpegAudioDecoder {
   private java.nio.ByteBuffer growOutputBuffer(androidx.media3.decoder.SimpleDecoderOutputBuffer, int, int);
 }
@@ -221,3 +229,12 @@
   public androidx.appcompat.app.AlertDialog$Builder setNegativeButton(int, android.content.DialogInterface$OnClickListener);
   public androidx.appcompat.app.AlertDialog create();
 }
+
+# 5.6.6 optical-disc navigation uses name-based JNI callbacks and field lookup.
+-keep class androidx.media3.exoplayer.iso.IsoNavigationSession { *; }
+-keep class androidx.media3.exoplayer.iso.IsoNavigationSession$** { *; }
+
+# Keep EXO optical-disc navigation entry points visible after R8 so the app and CI
+# can verify the navigation stream is packaged instead of optimized into callers.
+-keep interface androidx.media3.exoplayer.source.DiscNavigationSource { *; }
+-keep class androidx.media3.exoplayer.source.iso.IsoNavigationDataSource { *; }

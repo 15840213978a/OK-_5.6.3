@@ -84,7 +84,6 @@ public class Vod implements Parcelable, Diffable<Vod> {
     @ElementList(entry = "dd", required = false, inline = true)
     private List<Flag> vodFlags;
     private Site site;
-    private int searchCid;
 
     public Vod() {
     }
@@ -111,7 +110,6 @@ public class Vod implements Parcelable, Diffable<Vod> {
         this.style = in.readParcelable(Style.class.getClassLoader());
         this.vodFlags = in.createTypedArrayList(Flag.CREATOR);
         this.site = in.readParcelable(Site.class.getClassLoader());
-        this.searchCid = in.readInt();
     }
 
     public static Vod objectFrom(String str) {
@@ -253,14 +251,6 @@ public class Vod implements Parcelable, Diffable<Vod> {
         return getSite() == null ? "" : getSite().getKey();
     }
 
-    public int getSearchCid() {
-        return searchCid;
-    }
-
-    public void setSearchCid(int searchCid) {
-        this.searchCid = searchCid;
-    }
-
     public int getSiteVisible() {
         return getSite() == null ? View.GONE : View.VISIBLE;
     }
@@ -363,7 +353,6 @@ public class Vod implements Parcelable, Diffable<Vod> {
         dest.writeParcelable(this.style, flags);
         dest.writeTypedList(this.vodFlags);
         dest.writeParcelable(this.site, flags);
-        dest.writeInt(this.searchCid);
     }
 
     @Override

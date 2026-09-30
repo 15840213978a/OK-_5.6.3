@@ -1,7 +1,7 @@
 package com.fongmi.android.tv.ui.dialog;
 
-import android.app.Activity;
 import android.content.Intent;
+import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -28,9 +28,11 @@ import com.fongmi.android.tv.bean.Track;
 import com.fongmi.android.tv.databinding.DialogTrackBinding;
 import com.fongmi.android.tv.player.PlayerManager;
 import com.fongmi.android.tv.player.track.TrackUtil;
+import com.fongmi.android.tv.ui.activity.PlaybackActivity;
 import com.fongmi.android.tv.ui.adapter.TrackAdapter;
 import com.fongmi.android.tv.ui.custom.SpaceItemDecoration;
 import com.fongmi.android.tv.utils.FileChooser;
+import com.fongmi.android.tv.utils.FileUtil;
 import com.fongmi.android.tv.utils.ResUtil;
 
 import java.util.ArrayList;
@@ -71,6 +73,11 @@ public final class TrackDialog extends BaseBottomSheetDialog implements TrackAda
     }
 
     public void show(FragmentActivity activity) {
+        if (activity instanceof PlaybackActivity playback) {
+            if (player == null) player = playback.getPlaybackPlayer();
+            if (subtitleView == null) subtitleView = playback.getPlaybackSubtitleView();
+        }
+        if (player == null) return;
         for (Fragment f : activity.getSupportFragmentManager().getFragments()) if (f instanceof TrackDialog) return;
         show(activity.getSupportFragmentManager(), null);
     }
@@ -120,7 +127,7 @@ public final class TrackDialog extends BaseBottomSheetDialog implements TrackAda
     private void onSearch(View view) {
         FragmentActivity activity = requireActivity();
         dismissNow();
-        SubtitleSearchDialog.create().player(player).show(activity);
+        SubtitleSearchDialog.create().show(activity);
     }
 
     private void onChoose(View view) {
@@ -136,19 +143,19 @@ public final class TrackDialog extends BaseBottomSheetDialog implements TrackAda
 
     private void showSetting(FragmentActivity activity) {
         switch (type) {
-            case C.TRACK_TYPE_AUDIO -> AudioSettingDialog.create().player(player).show(activity);
-            case C.TRACK_TYPE_VIDEO -> VideoSettingDialog.create().player(player).show(activity);
+            case C.TRACK_TYPE_AUDIO -> AudioSettingDialog.create().show(activity);
+            case C.TRACK_TYPE_VIDEO -> VideoSettingDialog.create().show(activity);
             case C.TRACK_TYPE_TEXT -> SubtitleSettingDialog.create().view(subtitleView).player(player).show(activity);
         }
     }
 
-    private List<Track> getTrack() {
-        List<Track> items = new ArrayList<>();
+    private List<TrackAdapter.TrackItem> getTrack() {
+        List<TrackAdapter.TrackItem> items = new ArrayList<>();
         addTrack(items);
         return items;
     }
 
-    private void addTrack(List<Track> items) {
+    private void addTrack(List<TrackAdapter.TrackItem> items) {
         List<Tracks.Group> groups = player.getCurrentTracks().getGroups();
         for (int i = 0; i < groups.size(); i++) {
             Tracks.Group trackGroup = groups.get(i);
@@ -158,7 +165,7 @@ public final class TrackDialog extends BaseBottomSheetDialog implements TrackAda
                 String name = provider.getTrackName(format);
                 Track item = new Track(type, name, TrackUtil.describeFormat(format));
                 item.setSelected(trackGroup.isTrackSelected(j));
-                items.add(item);
+                items.add(new TrackAdapter.TrackItem(item, 0));
             }
         }
     }
@@ -169,9 +176,11 @@ public final class TrackDialog extends BaseBottomSheetDialog implements TrackAda
         dismiss();
     }
 
-    private final ActivityResultLauncher<Intent> launcher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
-        if (result.getResultCode() != Activity.RESULT_OK || result.getData() == null || result.getData().getData() == null) return;
-        player.setSub(Sub.from(FileChooser.getPathFromUri(result.getData().getData())));
+    private final ActivityResultLauncher<Intent> launcher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> FileChooser.getUri(result, this::setSubtitle));
+
+    private void setSubtitle(Uri uri) {
+        if (!isAdded()) return;
+        player.setSub(Sub.from(FileUtil.getDisplayName(uri), uri.toString()));
         dismiss();
-    });
+    }
 }

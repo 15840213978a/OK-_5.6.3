@@ -36,9 +36,9 @@ import com.fongmi.android.tv.impl.FilterListener;
 import com.fongmi.android.tv.impl.SiteListener;
 import com.fongmi.android.tv.model.SiteViewModel;
 import com.fongmi.android.tv.ui.activity.HistoryActivity;
+import com.fongmi.android.tv.ui.activity.VideoActivity;
 import com.fongmi.android.tv.ui.activity.KeepActivity;
 import com.fongmi.android.tv.ui.activity.SearchActivity;
-import com.fongmi.android.tv.ui.activity.VideoActivity;
 import com.fongmi.android.tv.ui.adapter.TypeAdapter;
 import com.fongmi.android.tv.ui.base.BaseFragment;
 import com.fongmi.android.tv.ui.dialog.FilterDialog;
@@ -184,12 +184,10 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
     }
 
     private void onLogo(View view) {
-        // 图标：顶层 Config / 总线路列表。
         HistoryDialog.create().vod().readOnly().show(this);
     }
 
     private void onSite(View view) {
-        // 标题文字：当前 Config 里面的真实 Site / 直线路列表，可直接选择。
         SiteDialog.create().change().show(this);
     }
 

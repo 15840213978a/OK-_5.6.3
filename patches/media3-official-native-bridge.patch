@@ -1,0 +1,286 @@
+diff --git a/libraries/decoder_ffmpeg/src/main/java/androidx/media3/decoder/ffmpeg/FfmpegDolbyVisionP5Native.java b/libraries/decoder_ffmpeg/src/main/java/androidx/media3/decoder/ffmpeg/FfmpegDolbyVisionP5Native.java
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/libraries/decoder_ffmpeg/src/main/java/androidx/media3/decoder/ffmpeg/FfmpegDolbyVisionP5Native.java
+@@ -0,0 +1,184 @@
++/*
++ * Copyright (C) 2026 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ */
++package androidx.media3.decoder.ffmpeg;
++
++import android.os.Build;
++import android.view.Surface;
++import androidx.annotation.Nullable;
++import androidx.media3.common.util.Log;
++import androidx.media3.common.util.UnstableApi;
++
++/**
++ * JNI bridge matching the native Dolby Vision Profile 5 renderer shipped with FongMi 5.6.6.
++ *
++ * <p>This class deliberately keeps the official package, class name and native method
++ * descriptors. Capability probing is safe: unsupported devices or ABI/linkage mismatches simply
++ * report unavailable.
++ */
++@UnstableApi
++final class FfmpegDolbyVisionP5Native {
++
++  private static final String TAG = "FfmpegDoviP5Native";
++  private static final int REQUIRED_CAPABILITIES = 0x7F;
++
++  private static @Nullable Probe cachedProbe;
++
++  private FfmpegDolbyVisionP5Native() {}
++
++  static synchronized Probe probe() {
++    if (cachedProbe != null) {
++      return cachedProbe;
++    }
++    if (Build.VERSION.SDK_INT < 26) {
++      return cachedProbe = new Probe(false, 0, "api-below-26");
++    }
++    if (!FfmpegLibrary.isAvailable()) {
++      return cachedProbe = new Probe(false, 0, "ffmpeg-unavailable");
++    }
++    try {
++      System.loadLibrary("ffmpegDoviJNI");
++      int capabilities = nativeProbeCapabilities();
++      boolean available = (capabilities & REQUIRED_CAPABILITIES) == REQUIRED_CAPABILITIES;
++      cachedProbe =
++          new Probe(
++              available,
++              capabilities,
++              available ? "available" : "missing-capability");
++    } catch (LinkageError | RuntimeException e) {
++      cachedProbe = new Probe(false, 0, "probe-" + e.getClass().getSimpleName());
++    }
++    Log.i(TAG, "GPU mapping " + cachedProbe);
++    return cachedProbe;
++  }
++
++  @Nullable
++  static NativeRenderer create(int width, int height) {
++    if (width <= 0 || height <= 0 || !probe().available) {
++      return null;
++    }
++    long handle = nativeCreate(width, height);
++    if (handle == 0) {
++      return null;
++    }
++    Surface inputSurface = nativeGetInputSurface(handle);
++    if (inputSurface == null) {
++      nativeRelease(handle);
++      return null;
++    }
++    return new NativeRenderer(handle, inputSurface);
++  }
++
++  static final class Probe {
++    public final boolean available;
++    public final int capabilities;
++    public final String reason;
++
++    Probe(boolean available, int capabilities, String reason) {
++      this.available = available;
++      this.capabilities = capabilities;
++      this.reason = reason;
++    }
++
++    @Override
++    public String toString() {
++      return "Probe(available="
++          + available
++          + ", capabilities="
++          + capabilities
++          + ", reason="
++          + reason
++          + ")";
++    }
++  }
++
++  static final class Stats {
++    private static final int FIELD_COUNT = 11;
++    private final long[] values = new long[FIELD_COUNT];
++
++    public long acquired() { return values[0]; }
++    public long matched() { return values[1]; }
++    public long unmatched() { return values[2]; }
++    public long frameDrops() { return values[3]; }
++    public long pendingFrames() { return values[4]; }
++    public long parsedRpus() { return values[5]; }
++    public long malformedRpus() { return values[6]; }
++    public long rpuDrops() { return values[7]; }
++    public long pendingRpus() { return values[8]; }
++    public long rendered() { return values[9]; }
++    public long failures() { return values[10]; }
++  }
++
++  static final class NativeRenderer implements AutoCloseable {
++    private long handle;
++    private @Nullable Surface inputSurface;
++    private final Stats stats = new Stats();
++
++    private NativeRenderer(long handle, Surface inputSurface) {
++      this.handle = handle;
++      this.inputSurface = inputSurface;
++    }
++
++    synchronized Surface getInputSurface() {
++      if (inputSurface == null) {
++        throw new IllegalStateException("Dolby Vision renderer is closed");
++      }
++      return inputSurface;
++    }
++
++    synchronized boolean queueFrame(long presentationTimeUs, long releaseTimeNs) {
++      return handle != 0 && nativeQueueFrame(handle, presentationTimeUs, releaseTimeNs);
++    }
++
++    synchronized boolean queueRpu(long presentationTimeUs, byte[] rpu) {
++      return handle != 0 && nativeQueueRpu(handle, presentationTimeUs, rpu);
++    }
++
++    synchronized void setOutputSurface(@Nullable Surface surface, int width, int height) {
++      if (handle != 0) {
++        nativeSetOutputSurface(handle, surface, width, height);
++      }
++    }
++
++    synchronized void clear() {
++      if (handle != 0) {
++        nativeClear(handle);
++      }
++    }
++
++    synchronized void redraw() {
++      if (handle != 0) {
++        nativeRedraw(handle);
++      }
++    }
++
++    synchronized Stats getStats() {
++      if (handle != 0) {
++        nativeGetStats(handle, stats.values);
++      }
++      return stats;
++    }
++
++    @Override
++    public synchronized void close() {
++      if (handle == 0) {
++        return;
++      }
++      Surface surface = inputSurface;
++      inputSurface = null;
++      nativeRelease(handle);
++      handle = 0;
++      if (surface != null) {
++        surface.release();
++      }
++    }
++  }
++
++  private static native int nativeProbeCapabilities();
++  private static native long nativeCreate(int width, int height);
++  private static native Surface nativeGetInputSurface(long handle);
++  private static native boolean nativeQueueFrame(long handle, long presentationTimeUs, long releaseTimeNs);
++  private static native boolean nativeQueueRpu(long handle, long presentationTimeUs, byte[] rpu);
++  private static native void nativeSetOutputSurface(long handle, Surface surface, int width, int height);
++  private static native void nativeClear(long handle);
++  private static native void nativeRedraw(long handle);
++  private static native boolean nativeGetStats(long handle, long[] stats);
++  private static native void nativeRelease(long handle);
++}
+diff --git a/libraries/extractor/src/main/java/androidx/media3/extractor/iso/udf/NativeUdfFileSystem.java b/libraries/extractor/src/main/java/androidx/media3/extractor/iso/udf/NativeUdfFileSystem.java
+new file mode 100644
+index 0000000..2222222
+--- /dev/null
++++ b/libraries/extractor/src/main/java/androidx/media3/extractor/iso/udf/NativeUdfFileSystem.java
+@@ -0,0 +1,95 @@
++/*
++ * Copyright (C) 2026 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ */
++package androidx.media3.extractor.iso.udf;
++
++import androidx.annotation.Nullable;
++import androidx.media3.common.CacheDataReader;
++import androidx.media3.common.util.UnstableApi;
++import androidx.media3.extractor.iso.IsoFileEntry;
++import java.io.Closeable;
++import java.io.IOException;
++import java.util.Arrays;
++import java.util.List;
++
++/** JNI UDF bridge matching the FongMi 5.6.6 {@code libisoJNI.so} interface. */
++@UnstableApi
++final class NativeUdfFileSystem implements Closeable {
++
++  private static final boolean LIBRARY_AVAILABLE;
++
++  static {
++    boolean available;
++    try {
++      System.loadLibrary("isoJNI");
++      available = true;
++    } catch (LinkageError | SecurityException e) {
++      available = false;
++    }
++    LIBRARY_AVAILABLE = available;
++  }
++
++  static boolean isAvailable() {
++    return LIBRARY_AVAILABLE;
++  }
++
++  private long handle;
++
++  NativeUdfFileSystem(CacheDataReader reader) throws IOException {
++    if (!LIBRARY_AVAILABLE) {
++      throw new UnsupportedImageException("ISO native library is unavailable");
++    }
++    handle = nativeOpen(reader);
++    if (handle == 0) {
++      throw new UnsupportedImageException("Could not open UDF image");
++    }
++  }
++
++  synchronized @Nullable IsoFileEntry findFile(String path) throws IOException {
++    ensureOpen();
++    return nativeFindFile(handle, path);
++  }
++
++  synchronized List<String> listFiles(String path) throws IOException {
++    ensureOpen();
++    String[] result = nativeListFiles(handle, path);
++    return result == null ? List.of() : Arrays.asList(result);
++  }
++
++  private void ensureOpen() throws IOException {
++    if (handle == 0) {
++      throw new IOException("UDF image is closed");
++    }
++  }
++
++  @Override
++  public synchronized void close() {
++    if (handle != 0) {
++      nativeClose(handle);
++      handle = 0;
++    }
++  }
++
++  static final class UnsupportedImageException extends IOException {
++    UnsupportedImageException(String message) {
++      super(message);
++    }
++  }
++
++  private static native long nativeOpen(CacheDataReader reader);
++  private static native @Nullable IsoFileEntry nativeFindFile(long handle, String path);
++  private static native String[] nativeListFiles(long handle, String path);
++  private static native void nativeClose(long handle);
++}

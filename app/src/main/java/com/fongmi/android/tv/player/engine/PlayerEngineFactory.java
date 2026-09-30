@@ -22,8 +22,10 @@ public final class PlayerEngineFactory {
     }
 
     public static PlayerEngine create(int decode, PlayerEngine.Type type, Player.Listener listener) {
-        if (type == MPV && isMpvReady()) return new MpvPlayerEngine(decode, listener);
-        return new ExoPlayerEngine(decode, listener);
+        return switch (type) {
+            case EXO -> new ExoPlayerEngine(decode, listener);
+            case MPV -> new MpvPlayerEngine(decode, listener);
+        };
     }
 
     public static boolean matches(PlayerEngine engine, PlaySpec spec) {
@@ -32,12 +34,12 @@ public final class PlayerEngineFactory {
 
     private static PlayerEngine.Type resolve(PlaySpec spec) {
         if (requiresExo(spec)) return EXO;
-        if (!PlayerSetting.isMpv() || !isMpvReady()) return EXO;
+        if (!isMpvReady()) return EXO;
         return MPV;
     }
 
     private static PlayerEngine.Type resolve() {
-        return PlayerSetting.isMpv() && isMpvReady() ? MPV : EXO;
+        return isMpvReady() ? MPV : EXO;
     }
 
     private static boolean requiresExo(PlaySpec spec) {
@@ -45,6 +47,6 @@ public final class PlayerEngineFactory {
     }
 
     private static boolean isMpvReady() {
-        return MpvPlayerEngine.isAvailable();
+        return PlayerSetting.isMpv() && MpvPlayerEngine.isAvailable();
     }
 }
