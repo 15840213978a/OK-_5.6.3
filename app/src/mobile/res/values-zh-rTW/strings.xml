@@ -59,4 +59,13 @@
         <item>子母畫面</item>
     </string-array>
 
+
+    <!-- OK 首頁快捷入口 -->
+    <string name="ok_quick_search">搜尋</string>
+    <string name="ok_quick_push">推送</string>
+    <string name="ok_quick_local">本機</string>
+    <string name="ok_quick_keep">收藏</string>
+    <string name="ok_quick_history">歷史</string>
+    <string name="ok_quick_site">換源</string>
+
 </resources>
