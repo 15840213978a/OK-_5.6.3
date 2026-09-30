@@ -1,0 +1,178 @@
+name: OK影视 5.6.8 开发构建
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  build:
+    name: Build OK影视 5.6.8
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout OK 5.6.8 development branch
+        uses: actions/checkout@v4
+        with:
+          ref: ok-video-568-rebuild
+          fetch-depth: 0
+
+      - name: Checkout matching FongMi Media3 source
+        uses: actions/checkout@v4
+        with:
+          repository: FongMi/media
+          ref: 3c2cbe8ac742c2fe15eff52f03eeb3b1b648848d
+          path: media3
+          fetch-depth: 1
+
+      - name: Checkout original FongMi libass source and native submodules
+        uses: actions/checkout@v4
+        with:
+          repository: FongMi/media
+          ref: 9dae39e9689ee305c83f94bd11cf3bcecb9d6171
+          path: media3-ass
+          fetch-depth: 1
+          submodules: recursive
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: temurin
+
+      - name: Install Python and native build tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y python3.10 python3.10-dev python3.10-venv autoconf automake autopoint gettext gperf libtool ninja-build pkg-config
+          python3.10 --version
+
+      - name: Ensure Android SDK 37
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager 2>/dev/null | head -n 1 || true)"
+          fi
+          test -n "$SDKMANAGER"
+          set +o pipefail
+          yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
+          set -o pipefail
+          "$SDKMANAGER" --channel=3             "platforms;android-37.0"             "platforms;android-36"             "build-tools;37.0.0"             "cmake;3.22.1"             "ndk;29.0.14206865"             "platform-tools"
+
+      - name: Configure release signing
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -n "${KEYSTORE_BASE64:-}" ]; then
+            printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
+            {
+              echo "storeFile=$RUNNER_TEMP/release.jks"
+              echo "storePassword=$KEYSTORE_PASSWORD"
+              echo "keyAlias=$KEY_ALIAS"
+              echo "keyPassword=${KEY_PASSWORD:-$KEYSTORE_PASSWORD}"
+            } > local.properties
+          else
+            echo "storeFile=${{ github.workspace }}/.github/debug.keystore" > local.properties
+            keytool -genkeypair -v -keystore .github/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+            {
+              echo "storePassword=android"
+              echo "keyAlias=androiddebugkey"
+              echo "keyPassword=android"
+            } >> local.properties
+          fi
+
+      - name: Restore ASS, ISO and EXO disc navigation in Media3
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/restore_official_java_bridges.py --media3-root media3
+          python3 scripts/restore_exo_disc_navigation.py --media3-root media3
+          git -C media3 diff --check
+
+      - name: Download verified official 5.6.8 APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p fongmi-official-568
+          curl -fL --retry 5 -o fongmi-official-568/mobile-arm64_v8a.apk https://github.com/FongMi/Release/releases/download/5.6.8/mobile-arm64_v8a.apk
+          curl -fL --retry 5 -o fongmi-official-568/mobile-armeabi_v7a.apk https://github.com/FongMi/Release/releases/download/5.6.8/mobile-armeabi_v7a.apk
+          echo "2e23a0ecc61f3fb908a566661f9e3f78d0027198671e0aed6bd1b94570c3eaea  fongmi-official-568/mobile-arm64_v8a.apk" | sha256sum -c -
+          echo "6c062459ccd6b0f8c4bfb4293b47b732e47943032b1d9959fc4bcd1b45d299f9  fongmi-official-568/mobile-armeabi_v7a.apk" | sha256sum -c -
+
+      - name: Stage official native payloads
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/stage_official_native_test.py             --arm64-apk fongmi-official-568/mobile-arm64_v8a.apk             --armeabi-apk fongmi-official-568/mobile-armeabi_v7a.apk             --output-root app/src/main
+
+      - name: Restore FFmpeg family
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/restore_official_567_ffmpeg.py             --arm64-apk fongmi-official-568/mobile-arm64_v8a.apk             --armeabi-apk fongmi-official-568/mobile-armeabi_v7a.apk             --output-root app/src/main
+
+      - name: Restore MPV disc menu binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/recover_official_mpv.py             --arm64-apk fongmi-official-568/mobile-arm64_v8a.apk             --armeabi-apk fongmi-official-568/mobile-armeabi_v7a.apk             --output-root app/src/main
+
+      - name: Verify native linkage
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/verify_official_native_linkage.py --root app/src/main
+          python3 scripts/verify_official_dovi_linkage.py --root app/src/main
+
+      - name: Build Media3 AARs
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x media3/gradlew
+          cd media3
+          ./gradlew --no-daemon             :libraries:common:assembleRelease             :libraries:container:assembleRelease             :libraries:database:assembleRelease             :libraries:datasource:assembleRelease             :libraries:decoder:assembleRelease             :libraries:exoplayer:assembleRelease             :libraries:extractor:assembleRelease             :libraries:ui:assembleRelease             :libraries:session:assembleRelease
+
+      - name: Build original libass module
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x media3-ass/gradlew
+          cd media3-ass
+          ./gradlew --no-daemon :libraries:decoder_libass:assembleRelease
+
+      - name: Build four OK APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew --no-daemon --stacktrace             :app:assembleMobileRelease             :app:assembleLeanbackRelease
+
+      - name: Collect APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          find app/build/outputs -type f -name '*.apk' -print
+          find app/build/outputs -type f -name '*.apk' -exec cp {} dist/ \;
+          ls -lh dist
+          test "$(find dist -maxdepth 1 -name '*.apk' | wc -l)" -ge 4
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: OK-Video-5.6.8-manual
+          path: dist/*.apk
+          if-no-files-found: error
+          retention-days: 30
