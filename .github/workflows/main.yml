@@ -2,10 +2,10 @@ name: Build and publish Android packages
 
 on:
   push:
-    branches: [main]
+    branches: [main, ok-video-568-rebuild]
     tags: ['v*']
   pull_request:
-    branches: [main]
+    branches: [main, ok-video-568-rebuild]
   workflow_dispatch:
     inputs:
       version_name:
