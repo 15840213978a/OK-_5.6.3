@@ -1,0 +1,105 @@
+name: Migrate full FongMi 5.6.8 core
+
+on:
+  push:
+    branches: [ok-video-568-rebuild]
+    paths:
+      - '.github/workflows/migrate-full-568.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout OK repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Save OK-only files
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp .github/workflows/migrate-full-568.yml /tmp/migrate-full-568.yml
+          if [ -f OK_REBUILD.md ]; then cp OK_REBUILD.md /tmp/OK_REBUILD.md; fi
+
+      - name: Fetch complete FongMi 5.6.8 rebuild tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git remote remove fongmi-source 2>/dev/null || true
+          git remote add fongmi-source https://github.com/15840213978a/fongmi.git
+          git fetch --depth=1 fongmi-source codex/ok516-rebuild-20260930
+          git rm -r .
+          git checkout fongmi-source/codex/ok516-rebuild-20260930 -- .
+          mkdir -p .github/workflows
+          cp /tmp/migrate-full-568.yml .github/workflows/migrate-full-568.yml
+          if [ -f /tmp/OK_REBUILD.md ]; then cp /tmp/OK_REBUILD.md OK_REBUILD.md; fi
+
+      - name: Apply standalone OK identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          app = Path("app/build.gradle")
+          text = app.read_text(encoding="utf-8")
+          text = re.sub(r'applicationId\s+"[^"]+"', 'applicationId "com.kanglian.okvideo"', text, count=1)
+          app.write_text(text, encoding="utf-8")
+
+          settings = Path("settings.gradle")
+          text = settings.read_text(encoding="utf-8")
+          text = re.sub(r'rootProject\.name\s*=\s*"[^"]+"', 'rootProject.name = "OK-Video"', text, count=1)
+          settings.write_text(text, encoding="utf-8")
+
+          strings = Path("app/src/main/res/values/strings.xml")
+          if strings.exists():
+              text = strings.read_text(encoding="utf-8")
+              text = re.sub(r'<string name="app_name">.*?</string>', '<string name="app_name">OK影视</string>', text, count=1)
+              strings.write_text(text, encoding="utf-8")
+
+          workflow = Path(".github/workflows/main.yml")
+          text = workflow.read_text(encoding="utf-8")
+          text = text.replace("name: Build APK", "name: Build OK影视 APK")
+          text = text.replace("branches: [ fongmi, 'codex/ok516-rebuild-20260930' ]", "branches: [ ok-video-568-rebuild ]")
+          text = text.replace("branches: [ fongmi ]", "branches: [ ok-video-568-rebuild ]")
+          text = text.replace("TV-5.6.8", "OK-Video-5.6.8")
+          text = text.replace("TV 5.6.8", "OK影视 5.6.8")
+          text = text.replace("auto-", "ok-auto-")
+          workflow.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Verify migrated core
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f nodejs/src/main/jniLibs/arm64-v8a/libnode.so
+          test -f nodejs/src/main/jniLibs/armeabi-v7a/libnode.so
+          test "$(stat -c%s nodejs/src/main/jniLibs/arm64-v8a/libnode.so)" -eq 48803656
+          test "$(stat -c%s nodejs/src/main/jniLibs/armeabi-v7a/libnode.so)" -eq 42630016
+          test -f scripts/restore_exo_disc_navigation.py
+          test -f scripts/restore_official_java_bridges.py
+          test -f scripts/stage_official_native_test.py
+          grep -q 'com.kanglian.okvideo' app/build.gradle
+          grep -q "include ':nodejs'" settings.gradle
+          du -sh nodejs
+          git status --short
+
+      - name: Commit full migration back to OK repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No migration changes."
+            exit 0
+          fi
+          git commit -m "Migrate full FongMi 5.6.8 core into standalone OK repo"
+          git push origin HEAD:ok-video-568-rebuild
