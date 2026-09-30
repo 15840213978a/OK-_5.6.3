@@ -4,7 +4,7 @@ name: Build OK影视 APK
 
 on:
   push:
-    branches: [ ok-video-568-rebuild ]
+    branches: [ main, ok-video-568-rebuild ]
   workflow_dispatch:
 
 permissions:
@@ -441,7 +441,7 @@ jobs:
           retention-days: 30
 
       - name: Publish four APKs to GitHub Release
-        if: github.ref == 'refs/heads/ok-video-568-rebuild'
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/ok-video-568-rebuild'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
