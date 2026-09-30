@@ -59,4 +59,13 @@
         <item>画中画</item>
     </string-array>
 
+
+    <!-- OK 首页快捷入口 -->
+    <string name="ok_quick_search">搜索</string>
+    <string name="ok_quick_push">推送</string>
+    <string name="ok_quick_local">本地</string>
+    <string name="ok_quick_keep">收藏</string>
+    <string name="ok_quick_history">历史</string>
+    <string name="ok_quick_site">换源</string>
+
 </resources>
