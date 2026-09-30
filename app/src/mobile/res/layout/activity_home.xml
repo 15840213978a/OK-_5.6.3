@@ -19,7 +19,7 @@
         android:background="@color/transparent"
         app:elevation="0dp"
         app:itemIconTint="@color/selector_nav"
-        app:labelVisibilityMode="unlabeled"
+        app:labelVisibilityMode="labeled"
         app:menu="@menu/menu_nav" />
 
 </RelativeLayout>
