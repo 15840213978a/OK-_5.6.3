@@ -116,23 +116,32 @@ jobs:
         run: |
           set -euo pipefail
 
-          for v in B64KEY KEY_ALIAS STORE_PASSWORD KEY_PASSWORD; do
-            if [ -z "${!v:-}" ]; then
-              echo "::error::缺少 GitHub Secret: $v"
-              exit 1
-            fi
-          done
-
           STORE_FILE="$GITHUB_WORKSPACE/.key/release.jks"
           mkdir -p "$(dirname "$STORE_FILE")"
 
-          printf '%s' "$B64KEY" | tr -d '\r\n ' | base64 --decode > "$STORE_FILE"
-          test -s "$STORE_FILE"
-
-          keytool -list \
-            -keystore "$STORE_FILE" \
-            -storepass "$STORE_PASSWORD" \
-            -alias "$KEY_ALIAS" >/dev/null
+          if [ -n "${B64KEY:-}" ] && [ -n "${KEY_ALIAS:-}" ] && [ -n "${STORE_PASSWORD:-}" ] && [ -n "${KEY_PASSWORD:-}" ]; then
+            printf '%s' "$B64KEY" | tr -d '\r\n ' | base64 --decode > "$STORE_FILE"
+            test -s "$STORE_FILE"
+            keytool -list \
+              -keystore "$STORE_FILE" \
+              -storepass "$STORE_PASSWORD" \
+              -alias "$KEY_ALIAS" >/dev/null
+            echo "Release signing configured from repository secrets."
+          else
+            echo "Signing secrets are not configured in this repository; generating a CI signing key."
+            STORE_PASSWORD=android
+            KEY_PASSWORD=android
+            KEY_ALIAS=androiddebugkey
+            keytool -genkeypair -v \
+              -keystore "$STORE_FILE" \
+              -storepass "$STORE_PASSWORD" \
+              -alias "$KEY_ALIAS" \
+              -keypass "$KEY_PASSWORD" \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=OK Video CI,O=Kanglian,C=CN"
+          fi
 
           cat > local.properties <<EOF
           storeFile=$STORE_FILE
@@ -141,7 +150,7 @@ jobs:
           keyPassword=$KEY_PASSWORD
           EOF
 
-          echo "Release signing configured."
+          echo "Signing configuration ready."
 
       - name: Grant execute permission
         run: chmod +x gradlew media3/gradlew media3-ass/gradlew
