@@ -18,11 +18,11 @@ android {
     compileSdk libs.versions.compileSdk.get().toInteger()
 
     defaultConfig {
-        applicationId "com.fongmi.android.tv"
+        applicationId "com.kanglian.okvideo"
         minSdk libs.versions.minSdk.get().toInteger()
         targetSdk libs.versions.targetSdk.get().toInteger()
-        versionCode providers.gradleProperty("VERSION_CODE").orElse("563").get().toInteger()
-        versionName providers.gradleProperty("VERSION_NAME").orElse("5.6.3").get()
+        versionCode providers.gradleProperty("VERSION_CODE").orElse("568").get().toInteger()
+        versionName providers.gradleProperty("VERSION_NAME").orElse("5.6.8").get()
         javaCompileOptions {
             annotationProcessorOptions {
                 arguments = ["room.schemaLocation": "$projectDir/schemas".toString(), "eventBusIndex": "com.fongmi.android.tv.event.EventIndex"]
