@@ -16,6 +16,7 @@ import com.orhanobut.logger.PrettyFormatStrategy;
 
 import org.greenrobot.eventbus.EventBus;
 
+import java.io.File;
 import java.util.Collections;
 import java.util.List;
 
@@ -27,10 +28,47 @@ public class Startup implements Initializer<Void> {
     @Override
     public Void create(@NonNull Context context) {
         CaocConfig.Builder.create().trackActivities(true).backgroundMode(CaocConfig.BACKGROUND_MODE_SILENT).errorActivity(CrashActivity.class).apply();
+        installWexProxyCrashGuard(context);
         Logger.addLogAdapter(new AndroidLogAdapter(PrettyFormatStrategy.newBuilder().methodCount(0).showThreadInfo(false).tag("TV").build()));
         EventBus.builder().addIndex(new EventIndex()).installDefaultEventBus();
         OkHttp.dns().setDoh(() -> Doh.objectFrom(Setting.getDoh()));
         return null;
+    }
+
+    private void installWexProxyCrashGuard(Context context) {
+        Thread.UncaughtExceptionHandler fallback = Thread.getDefaultUncaughtExceptionHandler();
+        Thread.setDefaultUncaughtExceptionHandler((thread, error) -> {
+            if (isBadWexProxyElf(error)) {
+                clearBadWexProxyFiles(context);
+                Logger.e("Ignored broken WangErXiao GoProxy native payload: " + error.getMessage());
+                return;
+            }
+            if (fallback != null) fallback.uncaughtException(thread, error);
+        });
+    }
+
+    private boolean isBadWexProxyElf(Throwable error) {
+        Throwable current = error;
+        while (current != null) {
+            String message = current.getMessage();
+            if (current instanceof UnsatisfiedLinkError
+                    && message != null
+                    && message.contains("libwexproxy")
+                    && message.contains("bad ELF magic")) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
+    }
+
+    private void clearBadWexProxyFiles(Context context) {
+        File tvDir = new File(context.getFilesDir(), "TV");
+        File[] files = tvDir.listFiles((dir, name) -> name != null && name.startsWith("libwexproxy"));
+        if (files == null) return;
+        for (File file : files) {
+            if (!file.delete()) file.deleteOnExit();
+        }
     }
 
     @NonNull
