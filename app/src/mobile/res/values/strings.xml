@@ -59,4 +59,13 @@
         <item>PiP</item>
     </string-array>
 
+
+    <!-- OK home quick actions -->
+    <string name="ok_quick_search">Search</string>
+    <string name="ok_quick_push">Push</string>
+    <string name="ok_quick_local">Local</string>
+    <string name="ok_quick_keep">Keep</string>
+    <string name="ok_quick_history">History</string>
+    <string name="ok_quick_site">Source</string>
+
 </resources>
