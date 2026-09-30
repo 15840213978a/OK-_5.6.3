@@ -1,0 +1,97 @@
+{
+  "source_apk": "OK影视-电视版-5.1.6.apk",
+  "source_apk_sha256": "f61b88eefa6dd34bb2ef13bab593af35e2af33d220c2f6b6deb9d08d285ee9ab",
+  "method": "Resources decoded with Apktool 2.11.1; copied without redrawing. Android 12+ splash uses the original foreground, without a custom animation. Current 5.6.8 application code and package ID retained.",
+  "resources": [
+    {
+      "source": "mipmap-anydpi-v26/ic_launcher.xml",
+      "target": "app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml",
+      "sha256": "99efc6773501c6b7a7d868fee4b9092334a44def9995752e149aab44c69ef10b"
+    },
+    {
+      "source": "mipmap-anydpi-v26/ic_launcher_round.xml",
+      "target": "app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml",
+      "sha256": "99efc6773501c6b7a7d868fee4b9092334a44def9995752e149aab44c69ef10b"
+    },
+    {
+      "source": "mipmap-hdpi/ic_launcher.png",
+      "target": "app/src/main/res/mipmap-hdpi/ic_launcher.png",
+      "sha256": "bc4999221e0e80fc7ebb20becec570c7b839be6d0c01a9525812cdb1d9e34ec1"
+    },
+    {
+      "source": "mipmap-hdpi/ic_launcher_round.webp",
+      "target": "app/src/main/res/mipmap-hdpi/ic_launcher_round.webp",
+      "sha256": "2a553f75d1e4a2a361e3928ed420ff6cc8cd7a8e850dee5fba3cda867df957b4"
+    },
+    {
+      "source": "mipmap-mdpi/ic_launcher.png",
+      "target": "app/src/main/res/mipmap-mdpi/ic_launcher.png",
+      "sha256": "23c0d59d0099ea53bd010bd1878a458c0dbba2247a35c3a9ac63036fe90c0559"
+    },
+    {
+      "source": "mipmap-mdpi/ic_launcher_round.webp",
+      "target": "app/src/main/res/mipmap-mdpi/ic_launcher_round.webp",
+      "sha256": "d0661a711af53ca59598a0c0011a2b2740a946a45cc57f64d3ac27fec3e179d3"
+    },
+    {
+      "source": "mipmap-xhdpi/ic_launcher.png",
+      "target": "app/src/main/res/mipmap-xhdpi/ic_launcher.png",
+      "sha256": "faafed2c14a1975d906d6b81f9d4368e134d3b569fd602be55e30660050cbdba"
+    },
+    {
+      "source": "mipmap-xhdpi/ic_launcher_round.webp",
+      "target": "app/src/main/res/mipmap-xhdpi/ic_launcher_round.webp",
+      "sha256": "293ef17539072da95552607d50131638f7bcad94bb70b7ac08648011d3202817"
+    },
+    {
+      "source": "mipmap-xxhdpi/ic_launcher.png",
+      "target": "app/src/main/res/mipmap-xxhdpi/ic_launcher.png",
+      "sha256": "ffcf6b1ec058ef1d73ad7d75dbfdb9d28d01d38c3a894b50de9efd503ad5ba21"
+    },
+    {
+      "source": "mipmap-xxhdpi/ic_launcher_round.webp",
+      "target": "app/src/main/res/mipmap-xxhdpi/ic_launcher_round.webp",
+      "sha256": "4d2167d28c5ea118b1fbf47c142df86bc732472ee3f61ee0b80da9bdd0502829"
+    },
+    {
+      "source": "mipmap-xxxhdpi/ic_launcher.png",
+      "target": "app/src/main/res/mipmap-xxxhdpi/ic_launcher.png",
+      "sha256": "82d2a4dafaca1b4fc2f43190a275c4dfcbcddd94cc260a20fca81fc36d3fda81"
+    },
+    {
+      "source": "mipmap-xxxhdpi/ic_launcher_round.webp",
+      "target": "app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.webp",
+      "sha256": "4533922bf03106be8f9eeba4d3a52c83f71892684e4ba1e894903bed3a4b16c1"
+    },
+    {
+      "source": "drawable/ic_launcher_foreground.xml",
+      "target": "app/src/main/res/drawable/ic_launcher_foreground.xml",
+      "sha256": "1babeb9f8403a475b831a097a611baa6d081665713538a5ba848a9a6c1018e42"
+    },
+    {
+      "source": "drawable-nodpi/ic_logo.png",
+      "target": "app/src/main/res/drawable-nodpi/ic_logo.png",
+      "sha256": "c1c35ea42f05a98b529b478ef2198cd652bd326b827d37dd4e7b134a64461605"
+    },
+    {
+      "source": "mipmap-xxxhdpi/ic_launcher.png",
+      "target": "app/src/main/ic_launcher-playstore.png",
+      "sha256": "82d2a4dafaca1b4fc2f43190a275c4dfcbcddd94cc260a20fca81fc36d3fda81"
+    },
+    {
+      "source": "mipmap-anydpi-v26/ic_banner.xml",
+      "target": "app/src/leanback/res/mipmap-anydpi-v26/ic_banner.xml",
+      "sha256": "42a538bffa1548cab3b279f414acdc7b11739e6922b593d18a1fde9170c00158"
+    },
+    {
+      "source": "mipmap-xhdpi/ic_banner.png",
+      "target": "app/src/leanback/res/mipmap-xhdpi/ic_banner.png",
+      "sha256": "dbd18a62b92452a3b1c8fcdd5edbcf43b88927c747c6a1297575e956cea7e7af"
+    },
+    {
+      "source": "drawable/ic_banner_foreground.xml",
+      "target": "app/src/leanback/res/drawable/ic_banner_foreground.xml",
+      "sha256": "30568171296a56630a2b0855d32a25172bb88ed54e66ceedb4ea5ca8558b7913"
+    }
+  ]
+}
