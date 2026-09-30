@@ -1,11 +1,14 @@
 package com.fongmi.android.tv.ui.fragment;
 
+import android.content.Intent;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -35,6 +38,7 @@ import com.fongmi.android.tv.model.SiteViewModel;
 import com.fongmi.android.tv.ui.activity.HistoryActivity;
 import com.fongmi.android.tv.ui.activity.KeepActivity;
 import com.fongmi.android.tv.ui.activity.SearchActivity;
+import com.fongmi.android.tv.ui.activity.VideoActivity;
 import com.fongmi.android.tv.ui.adapter.TypeAdapter;
 import com.fongmi.android.tv.ui.base.BaseFragment;
 import com.fongmi.android.tv.ui.dialog.FilterDialog;
@@ -42,6 +46,7 @@ import com.fongmi.android.tv.ui.dialog.HistoryDialog;
 import com.fongmi.android.tv.ui.dialog.LinkDialog;
 import com.fongmi.android.tv.ui.dialog.ReceiveDialog;
 import com.fongmi.android.tv.ui.dialog.SiteDialog;
+import com.fongmi.android.tv.utils.FileChooser;
 import com.fongmi.android.tv.utils.ImgUtil;
 import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.ResUtil;
@@ -102,6 +107,12 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
         mBinding.filter.setOnClickListener(this::onFilter);
         mBinding.filter.setOnLongClickListener(this::onLink);
         mBinding.toolbar.setOnMenuItemClickListener(this::onMenuItemClick);
+        mBinding.quickSearch.setOnClickListener(v -> SearchActivity.start(requireActivity()));
+        mBinding.quickPush.setOnClickListener(this::onLink);
+        mBinding.quickLocal.setOnClickListener(v -> FileChooser.from(localLauncher).show());
+        mBinding.quickKeep.setOnClickListener(v -> KeepActivity.start(requireActivity()));
+        mBinding.quickHistory.setOnClickListener(v -> HistoryActivity.start(requireActivity()));
+        mBinding.quickSite.setOnClickListener(this::onSite);
         mBinding.appBar.addOnOffsetChangedListener((appBarLayout, verticalOffset) -> {
             float factor = Math.abs(verticalOffset * 1f / appBarLayout.getTotalScrollRange());
             int padding = (int) (ResUtil.dp2px(12) * factor);
@@ -262,6 +273,13 @@ public class VodFragment extends BaseFragment implements ConfigListener, SiteLis
     public void onCastEvent(CastEvent event) {
         ReceiveDialog.create().event(event).show(this);
     }
+
+    private final ActivityResultLauncher<Intent> localLauncher =
+            registerForActivityResult(
+                    new ActivityResultContracts.StartActivityForResult(),
+                    result -> FileChooser.getUri(result, uri -> {
+                        if (isAdded()) VideoActivity.file(requireActivity(), uri);
+                    }));
 
     @Override
     public void setConfig(Config config) {
