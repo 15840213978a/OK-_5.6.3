@@ -23,7 +23,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cp .github/workflows/migrate-full-568.yml /tmp/migrate-full-568.yml
+          mkdir -p /tmp/ok-workflows
+          cp -a .github/workflows/. /tmp/ok-workflows/
           if [ -f OK_REBUILD.md ]; then cp OK_REBUILD.md /tmp/OK_REBUILD.md; fi
 
       - name: Fetch complete FongMi 5.6.8 rebuild tree
@@ -35,8 +36,9 @@ jobs:
           git fetch --depth=1 fongmi-source codex/ok516-rebuild-20260930
           git rm -r .
           git checkout fongmi-source/codex/ok516-rebuild-20260930 -- .
+          rm -rf .github/workflows
           mkdir -p .github/workflows
-          cp /tmp/migrate-full-568.yml .github/workflows/migrate-full-568.yml
+          cp -a /tmp/ok-workflows/. .github/workflows/
           if [ -f /tmp/OK_REBUILD.md ]; then cp /tmp/OK_REBUILD.md OK_REBUILD.md; fi
 
       - name: Apply standalone OK identity
@@ -63,15 +65,6 @@ jobs:
               text = re.sub(r'<string name="app_name">.*?</string>', '<string name="app_name">OK影视</string>', text, count=1)
               strings.write_text(text, encoding="utf-8")
 
-          workflow = Path(".github/workflows/main.yml")
-          text = workflow.read_text(encoding="utf-8")
-          text = text.replace("name: Build APK", "name: Build OK影视 APK")
-          text = text.replace("branches: [ fongmi, 'codex/ok516-rebuild-20260930' ]", "branches: [ ok-video-568-rebuild ]")
-          text = text.replace("branches: [ fongmi ]", "branches: [ ok-video-568-rebuild ]")
-          text = text.replace("TV-5.6.8", "OK-Video-5.6.8")
-          text = text.replace("TV 5.6.8", "OK影视 5.6.8")
-          text = text.replace("auto-", "ok-auto-")
-          workflow.write_text(text, encoding="utf-8")
           PY
 
       - name: Verify migrated core
