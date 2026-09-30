@@ -161,12 +161,24 @@ jobs:
           retention-days: 30
 
       - name: Publish GitHub Release
-        if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish_release) }}
+        if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/ok-video-568-rebuild') || startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish_release) }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || steps.version.outputs.tag }}
-          name: OK影视 ${{ steps.version.outputs.name }}
-          generate_release_notes: true
+          tag_name: ${{ github.ref == 'refs/heads/ok-video-568-rebuild' && format('ok-auto-{0}', github.run_number) || (startsWith(github.ref, 'refs/tags/v') && github.ref_name || steps.version.outputs.tag) }}
+          name: ${{ github.ref == 'refs/heads/ok-video-568-rebuild' && format('OK影视 {0} 自动构建 #{1}', steps.version.outputs.name, github.run_number) || format('OK影视 {0}', steps.version.outputs.name) }}
+          body: |
+            OK影视独立仓自动构建
+
+            分支：${{ github.ref_name }}
+            Commit：${{ github.sha }}
+
+            包含：
+            - mobile arm64-v8a
+            - mobile armeabi-v7a
+            - leanback arm64-v8a
+            - leanback armeabi-v7a
+            - SHA256SUMS.txt
+          generate_release_notes: false
           fail_on_unmatched_files: true
           files: dist/*
         env:
